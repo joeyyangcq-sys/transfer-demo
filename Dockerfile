@@ -10,5 +10,5 @@ RUN CGO_ENABLED=0 go build -o /out/server ./cmd/server
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /out/server /server
 COPY migrations /migrations
-EXPOSE 8080
+EXPOSE 8080 9090
 ENTRYPOINT ["/server"]

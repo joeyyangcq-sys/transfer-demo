@@ -13,17 +13,11 @@ import (
 )
 
 // requestIDHeader carries a per-request correlation id.
+// requestIDHeader 承载每个请求的关联 id。
 const requestIDHeader = "X-Request-Id"
 
-// skipObservePaths are operational endpoints excluded from access logs and
-// HTTP metrics to avoid noise.
-var skipObservePaths = map[string]bool{
-	"/livez":   true,
-	"/readyz":  true,
-	"/metrics": true,
-}
-
 // RequestID assigns a request id (from the header or a new UUID) and echoes it.
+// RequestID 为请求分配 id（取自请求头或新生成的 UUID）并回写到响应头。
 func RequestID() app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		id := string(c.GetHeader(requestIDHeader))
@@ -36,14 +30,11 @@ func RequestID() app.HandlerFunc {
 	}
 }
 
-// Observe records HTTP RED metrics and an access log line, skipping probes.
+// Observe records HTTP RED metrics and an access log line for each request.
+// Observe 为每个请求记录 HTTP RED 指标和一条访问日志。
 func Observe(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		path := string(c.Path())
-		if skipObservePaths[path] {
-			c.Next(ctx)
-			return
-		}
 
 		start := time.Now()
 		c.Next(ctx)
@@ -70,6 +61,7 @@ func Observe(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 }
 
 // Recover turns panics into a 500 and records the panic metric.
+// Recover 把 panic 转为 500 响应并累加 panic 指标。
 func Recover(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		defer func() {
@@ -83,6 +75,8 @@ func Recover(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 	}
 }
 
+// strconvStatus buckets a status code into a low-cardinality label.
+// strconvStatus 把状态码归并为低基数标签。
 func strconvStatus(code int) string {
 	switch {
 	case code >= 500:

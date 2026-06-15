@@ -19,9 +19,13 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_ADDR: ":8080"
+      METRICS_ADDR: ":9090"
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/transfers?sslmode=disable"
     ports:
       - "8080:8080"
+      # Admin port (metrics + probes). In production keep this off the public
+      # network; exposed here only for local scraping/inspection.
+      - "9090:9090"
     depends_on:
       postgres:
         condition: service_healthy

@@ -28,6 +28,7 @@ func main() {
 	}
 
 	// Root context cancelled on SIGINT/SIGTERM (ECS sends SIGTERM).
+	// 收到 SIGINT/SIGTERM 时取消根 context（ECS 停容器发的是 SIGTERM）。
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -47,14 +48,17 @@ func main() {
 	}
 
 	// Metrics.
+	// 指标。
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	metrics := observability.NewMetrics(reg)
 
 	// Sample DB pool stats in the background.
+	// 后台定时采集数据库连接池的统计指标。
 	go metrics.SamplePool(ctx, pool, 10*time.Second)
 
 	// Wire layers: repositories -> services -> handlers.
+	// 装配各层：repository -> service -> handler。
 	accountRepo := repository.NewAccountRepository()
 	transferRepo := repository.NewTransferRepository()
 	txManager := repository.NewTxManager(pool)
@@ -70,31 +74,53 @@ func main() {
 		Health:      health,
 	}
 
-	h := server.New(
+	// Public server: business endpoints only.
+	// 公开 server：只挂载业务接口。
+	public := server.New(
 		server.WithHostPorts(cfg.Addr),
 		server.WithExitWaitTime(cfg.ShutdownTimeout),
 	)
-	api.RegisterRoutes(h, reg, metrics, log, handlers)
+	api.RegisterPublicRoutes(public, metrics, log, handlers)
 
-	// Serve in the background so we can manage shutdown ourselves.
+	// Internal admin server: metrics and probes, kept off the public interface.
+	// 内部 admin server：指标与健康探针，不对外暴露。
+	admin := server.New(
+		server.WithHostPorts(cfg.MetricsAddr),
+		server.WithExitWaitTime(cfg.ShutdownTimeout),
+	)
+	api.RegisterAdminRoutes(admin, reg, metrics, log, handlers)
+
+	// Serve both in the background so we can manage shutdown ourselves.
+	// 两个 server 都在后台启动，以便我们自己控制关闭流程。
 	go func() {
-		if err := h.Run(); err != nil {
-			log.Error("server stopped", "error", err)
+		if err := public.Run(); err != nil {
+			log.Error("public server stopped", "error", err)
 		}
 	}()
-	log.Info("server started", "addr", cfg.Addr)
+	go func() {
+		if err := admin.Run(); err != nil {
+			log.Error("admin server stopped", "error", err)
+		}
+	}()
+	log.Info("servers started", "addr", cfg.Addr, "metrics_addr", cfg.MetricsAddr)
 
 	// Block until a termination signal arrives.
+	// 阻塞，直到收到终止信号。
 	<-ctx.Done()
 	log.Info("shutdown signal received, draining")
 
 	// Flip readiness to 503 so the load balancer stops sending new traffic,
-	// then shut the server down within the configured budget.
+	// then shut both servers down within the configured budget.
+	// 把就绪探针置为 503，让负载均衡停止转发新流量，
+	// 然后在配置的超时预算内关闭两个 server。
 	health.SetNotReady()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
-	if err := h.Shutdown(shutdownCtx); err != nil {
-		log.Error("graceful shutdown failed", "error", err)
+	if err := public.Shutdown(shutdownCtx); err != nil {
+		log.Error("public graceful shutdown failed", "error", err)
 	}
-	log.Info("server stopped cleanly")
+	if err := admin.Shutdown(shutdownCtx); err != nil {
+		log.Error("admin graceful shutdown failed", "error", err)
+	}
+	log.Info("servers stopped cleanly")
 }

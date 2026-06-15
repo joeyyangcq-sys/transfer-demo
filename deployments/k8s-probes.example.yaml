@@ -1,8 +1,11 @@
 # Reference probe configuration (not applied automatically).
+# Probes target the internal admin port (METRICS_ADDR, 9090), not the public
+# business port (8080). The kubelet reaches the pod directly, so probes do not
+# need to be on the public interface.
 livenessProbe:
   httpGet:
     path: /livez
-    port: 8080
+    port: 9090
   initialDelaySeconds: 5
   periodSeconds: 10
   failureThreshold: 3
@@ -10,7 +13,7 @@ livenessProbe:
 readinessProbe:
   httpGet:
     path: /readyz
-    port: 8080
+    port: 9090
   initialDelaySeconds: 3
   periodSeconds: 5
   timeoutSeconds: 2

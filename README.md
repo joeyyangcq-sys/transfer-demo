@@ -24,11 +24,22 @@ HTTP framework.
 
 ## API
 
+The service listens on two ports: a **public** port for business endpoints and
+an **internal admin** port for metrics and health probes. The admin port should
+not be exposed to the public network — its metrics reveal internal state.
+
+Public port (`APP_ADDR`, default `:8080`):
+
 | Method | Path                       | Description                       | Success |
 |--------|----------------------------|-----------------------------------|---------|
 | POST   | `/accounts`                | Create an account                 | 201     |
 | GET    | `/accounts/{account_id}`   | Get an account and its balance    | 200     |
 | POST   | `/transactions`            | Transfer between two accounts     | 201     |
+
+Internal admin port (`METRICS_ADDR`, default `:9090`):
+
+| Method | Path                       | Description                       | Success |
+|--------|----------------------------|-----------------------------------|---------|
 | GET    | `/livez`                   | Liveness probe                    | 200     |
 | GET    | `/readyz`                  | Readiness probe (checks Postgres) | 200/503 |
 | GET    | `/metrics`                 | Prometheus metrics                | 200     |
@@ -83,7 +94,8 @@ Errors return a JSON body `{"error": "..."}` with an appropriate status:
 make docker-up        # builds the image, starts Postgres + the service
 ```
 
-The service listens on `:8080`. Migrations run automatically on startup.
+Business endpoints are on `:8080`; metrics and probes on `:9090`. Migrations
+run automatically on startup.
 
 ## Run locally
 
@@ -114,7 +126,8 @@ All configuration is via environment variables (see `.env.example`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_ADDR` | `:8080` | HTTP listen address |
+| `APP_ADDR` | `:8080` | Public HTTP listen address (business endpoints) |
+| `METRICS_ADDR` | `:9090` | Internal admin address (metrics + probes) |
 | `DATABASE_URL` | — (required) | PostgreSQL DSN |
 | `DB_MAX_CONNS` | `10` | Connection pool size |
 | `RUN_MIGRATIONS` | `true` | Run migrations on startup |
@@ -186,7 +199,12 @@ Not implemented here (out of scope for the exercise), but worth noting:
 - **Secrets**: inject `DATABASE_URL` from Secrets Manager / SSM, not a committed
   file. RDS IAM authentication avoids long-lived passwords.
 - **TLS**: use `sslmode=require` (or `verify-full` with the RDS CA) in production.
-- **Health checks**: point the load balancer / ALB target group at `/readyz`;
-  use `/livez` for the orchestrator's restart decisions.
-- **Metrics**: scrape `/metrics` with Prometheus, or export to CloudWatch / AMP
-  via the OpenTelemetry Collector.
+- **Port separation**: business endpoints and the admin endpoints (`/metrics`,
+  `/livez`, `/readyz`) listen on different ports. Expose only the public port
+  through the ALB; keep the admin port (`METRICS_ADDR`) reachable only from
+  inside the VPC/cluster (security group / NetworkPolicy), since metrics expose
+  internal state (Go version, traffic, error and business volumes).
+- **Health checks**: the kubelet / ALB health check targets `/readyz` on the
+  admin port; use `/livez` for the orchestrator's restart decisions.
+- **Metrics**: Prometheus scrapes `/metrics` on the admin port from within the
+  cluster, or export to CloudWatch / AMP via the OpenTelemetry Collector.
