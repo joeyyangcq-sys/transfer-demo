@@ -1,0 +1,192 @@
+# Internal Transfers Service
+
+An HTTP service for internal money transfers between accounts, backed by
+PostgreSQL. Built with Go and the [Hertz](https://github.com/cloudwego/hertz)
+HTTP framework.
+
+## Features
+
+- Create accounts, query balances, and transfer money between accounts.
+- **High-precision amounts** (no floats): `NUMERIC(38,18)` in Postgres and
+  `shopspring/decimal` in Go. Amounts are exchanged as JSON strings.
+- **Strong consistency**: each transfer runs in one transaction with
+  `SELECT ... FOR UPDATE` row locks (acquired in ascending id order to avoid
+  deadlocks) plus a `CHECK (balance >= 0)` safety net.
+- **Double-entry ledger** for full auditability: every transfer writes a debit
+  and a credit entry, each with a `balance_after` snapshot, so any account's
+  history can be replayed.
+- **Idempotency** via the optional `Idempotency-Key` HTTP header — retries never
+  move money twice.
+- **Observability**: Prometheus metrics at `/metrics`, plus liveness and
+  readiness probes.
+- **Graceful shutdown**: on SIGTERM the service drains in-flight requests and
+  reports `not ready` so a load balancer stops sending new traffic.
+
+## API
+
+| Method | Path                       | Description                       | Success |
+|--------|----------------------------|-----------------------------------|---------|
+| POST   | `/accounts`                | Create an account                 | 201     |
+| GET    | `/accounts/{account_id}`   | Get an account and its balance    | 200     |
+| POST   | `/transactions`            | Transfer between two accounts     | 201     |
+| GET    | `/livez`                   | Liveness probe                    | 200     |
+| GET    | `/readyz`                  | Readiness probe (checks Postgres) | 200/503 |
+| GET    | `/metrics`                 | Prometheus metrics                | 200     |
+
+### Create account
+
+```bash
+curl -X POST localhost:8080/accounts \
+  -H 'Content-Type: application/json' \
+  -d '{"account_id": 123, "initial_balance": "100.23344"}'
+```
+
+### Get account
+
+```bash
+curl localhost:8080/accounts/123
+# {"account_id":123,"balance":"100.23344"}
+```
+
+### Transfer
+
+```bash
+curl -X POST localhost:8080/transactions \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000' \
+  -d '{"source_account_id": 123, "destination_account_id": 456, "amount": "100.12345"}'
+```
+
+The `Idempotency-Key` header is optional. When supplied, retrying the same
+request returns the original result without moving money again.
+
+### Error responses
+
+Errors return a JSON body `{"error": "..."}` with an appropriate status:
+
+| Status | Cases |
+|--------|-------|
+| 400 | invalid JSON, non-positive amount, source equals destination, malformed idempotency key |
+| 404 | account not found |
+| 409 | account already exists, insufficient funds |
+| 422 | idempotency key reused with different parameters |
+| 500 | unexpected server/database error |
+
+## Requirements
+
+- Go 1.26+
+- PostgreSQL 16+ (or Docker)
+
+## Quick start (Docker)
+
+```bash
+make docker-up        # builds the image, starts Postgres + the service
+```
+
+The service listens on `:8080`. Migrations run automatically on startup.
+
+## Run locally
+
+```bash
+cp .env.example .env  # then point DATABASE_URL at your Postgres
+export $(grep -v '^#' .env | xargs)
+make run
+```
+
+## Testing
+
+```bash
+make test             # unit tests (no database needed)
+
+# Integration tests need a Postgres instance:
+export TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/transfers?sslmode=disable
+make test-integration # transfer, concurrency, and idempotency tests
+```
+
+Unit tests cover the transfer orchestration (validation, insufficient funds,
+idempotent replay, conflicts) using in-memory fakes. Integration tests run
+against a real Postgres and include a concurrency test that fires more transfers
+than the balance can cover, asserting no overdraft and conservation of funds.
+
+## Configuration
+
+All configuration is via environment variables (see `.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_ADDR` | `:8080` | HTTP listen address |
+| `DATABASE_URL` | — (required) | PostgreSQL DSN |
+| `DB_MAX_CONNS` | `10` | Connection pool size |
+| `RUN_MIGRATIONS` | `true` | Run migrations on startup |
+| `SHUTDOWN_TIMEOUT_SECONDS` | `15` | Graceful shutdown budget |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+
+## Project layout
+
+```
+cmd/server              entry point and graceful shutdown
+internal/domain         entities and domain errors
+internal/repository     data access (pgx), transaction helper, error mapping
+internal/service        business logic (accounts, transfers, money validation)
+internal/api            HTTP handlers, routing, middleware, health probes
+internal/observability  Prometheus metrics and logging
+internal/platform       Postgres pool and migration runner
+migrations              SQL schema
+test/integration        end-to-end tests (transfer, concurrency, idempotency)
+```
+
+## Data model
+
+- `accounts` — current balance snapshot, with a non-negative `CHECK`.
+- `transfers` — immutable log of each transfer; holds the optional idempotency
+  key under a partial unique index.
+- `ledger_entries` — two rows per transfer (debit + credit) with a
+  `balance_after` snapshot for audit and replay.
+
+Auditing a single account's history:
+
+```sql
+SELECT created_at, direction, amount, balance_after
+FROM ledger_entries
+WHERE account_id = $1
+ORDER BY id;
+```
+
+Sanity check that the ledger balances globally:
+
+```sql
+SELECT
+  SUM(amount) FILTER (WHERE direction = 'debit')  AS total_debit,
+  SUM(amount) FILTER (WHERE direction = 'credit') AS total_credit
+FROM ledger_entries;  -- the two totals must be equal
+```
+
+## Assumptions
+
+- A single shared currency for all accounts; amounts use up to 18 decimal places.
+- No authentication or authorization (out of scope).
+- `account_id` is supplied by the client and is the primary key; re-creating an
+  existing id returns 409.
+- The `Idempotency-Key` header is optional; without it a transfer is processed
+  non-idempotently. The request body matches the spec exactly — idempotency is
+  carried entirely in the header.
+- Because the system is a single Postgres instance with synchronous
+  transactions, a transfer is either fully committed or fully rolled back; there
+  is no need for a pending state, two-phase commit, or sagas.
+
+## Production & AWS considerations
+
+Not implemented here (out of scope for the exercise), but worth noting:
+
+- **Migrations under multiple replicas**: the migration runner takes a Postgres
+  advisory lock so concurrent instances starting together are safe. In
+  production, running migrations as a separate one-off job is recommended.
+- **Connection limits**: with N replicas, `DB_MAX_CONNS × N` must stay under the
+  database `max_connections`. RDS Proxy is a good fit for pooling and failover.
+- **Secrets**: inject `DATABASE_URL` from Secrets Manager / SSM, not a committed
+  file. RDS IAM authentication avoids long-lived passwords.
+- **TLS**: use `sslmode=require` (or `verify-full` with the RDS CA) in production.
+- **Health checks**: point the load balancer / ALB target group at `/readyz`;
+  use `/livez` for the orchestrator's restart decisions.
+- **Metrics**: scrape `/metrics` with Prometheus, or export to CloudWatch / AMP
+  via the OpenTelemetry Collector.
