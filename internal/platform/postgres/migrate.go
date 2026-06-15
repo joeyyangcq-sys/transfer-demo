@@ -12,11 +12,14 @@ import (
 )
 
 // migrationLockID is an arbitrary app-wide key for the advisory lock.
+// migrationLockID 是 advisory lock 用的一个应用级固定 key。
 const migrationLockID int64 = 4242
 
 // Migrate applies all *.up.sql files in order. It holds a session-level
 // advisory lock so only one instance migrates at a time (safe for multiple
 // replicas starting together).
+// Migrate 按顺序执行所有 *.up.sql。它持有会话级 advisory lock，
+// 保证同一时刻只有一个实例在迁移（多副本同时启动也安全）。
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
@@ -25,6 +28,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	defer conn.Release()
 
 	// Block until we hold the lock; released on unlock or session end.
+	// 阻塞直到拿到锁；在 unlock 或会话结束时释放。
 	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", migrationLockID); err != nil {
 		return fmt.Errorf("acquire advisory lock: %w", err)
 	}
@@ -47,6 +51,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 // upFiles returns the *.up.sql migration file names in sorted order.
+// upFiles 返回排好序的 *.up.sql 迁移文件名列表。
 func upFiles() ([]string, error) {
 	entries, err := migrations.FS.ReadDir(".")
 	if err != nil {

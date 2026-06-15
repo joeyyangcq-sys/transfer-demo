@@ -8,6 +8,7 @@ import (
 )
 
 // SamplePool periodically copies pool stats into gauges until ctx is done.
+// SamplePool 周期性地把连接池统计写入 gauge，直到 ctx 结束。
 func (m *Metrics) SamplePool(ctx context.Context, pool *pgxpool.Pool, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

@@ -12,9 +12,11 @@ import (
 )
 
 // idempotencyHeader is the HTTP header carrying the optional idempotency key.
+// idempotencyHeader 是承载可选幂等键的 HTTP 头。
 const idempotencyHeader = "Idempotency-Key"
 
 // TransactionHandler serves the transfer endpoint.
+// TransactionHandler 提供转账接口。
 type TransactionHandler struct {
 	svc     *service.TransferService
 	resp    *Responder
@@ -22,11 +24,13 @@ type TransactionHandler struct {
 }
 
 // NewTransactionHandler creates a TransactionHandler.
+// NewTransactionHandler 创建一个 TransactionHandler。
 func NewTransactionHandler(svc *service.TransferService, resp *Responder, m *observability.Metrics) *TransactionHandler {
 	return &TransactionHandler{svc: svc, resp: resp, metrics: m}
 }
 
 // Transfer handles POST /transactions.
+// Transfer 处理 POST /transactions。
 func (h *TransactionHandler) Transfer(ctx context.Context, c *app.RequestContext) {
 	var req TransferRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -34,6 +38,8 @@ func (h *TransactionHandler) Transfer(ctx context.Context, c *app.RequestContext
 		return
 	}
 
+	// Optional idempotency key from the header; empty means non-idempotent.
+	// 从请求头取可选幂等键；为空表示非幂等。
 	key := string(c.GetHeader(idempotencyHeader))
 	if key != "" {
 		h.metrics.IdempotencyHits.WithLabelValues("with_key").Inc()

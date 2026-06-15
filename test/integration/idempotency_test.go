@@ -12,6 +12,8 @@ import (
 
 // TestTransfer_IdempotentRetry sends the same Idempotency-Key several times,
 // including concurrently, and asserts money moves exactly once.
+// TestTransfer_IdempotentRetry 多次（含并发）发送相同 Idempotency-Key，
+// 断言资金恰好只移动一次。
 func TestTransfer_IdempotentRetry(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -39,6 +41,7 @@ func TestTransfer_IdempotentRetry(t *testing.T) {
 	wg.Wait()
 
 	// All retries resolve to the same transfer id.
+	// 所有重试都解析到同一个转账 id。
 	for _, id := range ids {
 		if id != ids[0] {
 			t.Fatalf("retries returned different transfer ids: %v", ids)

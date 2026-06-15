@@ -12,14 +12,17 @@ import (
 )
 
 // AccountRepository reads and writes account rows.
+// AccountRepository 负责账户行的读写。
 type AccountRepository struct{}
 
 // NewAccountRepository creates an AccountRepository.
+// NewAccountRepository 创建一个 AccountRepository。
 func NewAccountRepository() *AccountRepository {
 	return &AccountRepository{}
 }
 
 // Create inserts a new account. Returns ErrAccountAlreadyExists on duplicate id.
+// Create 插入一个新账户；id 重复时返回 ErrAccountAlreadyExists。
 func (r *AccountRepository) Create(ctx context.Context, q Querier, id int64, balance decimal.Decimal) error {
 	_, err := q.Exec(ctx,
 		`INSERT INTO accounts (id, balance) VALUES ($1, $2)`,
@@ -35,6 +38,7 @@ func (r *AccountRepository) Create(ctx context.Context, q Querier, id int64, bal
 }
 
 // Get returns one account. Returns ErrAccountNotFound when missing.
+// Get 返回单个账户；不存在时返回 ErrAccountNotFound。
 func (r *AccountRepository) Get(ctx context.Context, q Querier, id int64) (domain.Account, error) {
 	var a domain.Account
 	err := q.QueryRow(ctx,
@@ -52,6 +56,8 @@ func (r *AccountRepository) Get(ctx context.Context, q Querier, id int64) (domai
 
 // LockForUpdate locks the given accounts FOR UPDATE in ascending id order to
 // avoid deadlocks, and returns their current balances keyed by id.
+// LockForUpdate 按 id 升序对给定账户加 FOR UPDATE 锁（避免死锁），
+// 并返回以 id 为键的当前余额。
 func (r *AccountRepository) LockForUpdate(ctx context.Context, q Querier, ids []int64) (map[int64]domain.Account, error) {
 	rows, err := q.Query(ctx,
 		`SELECT id, balance, version, created_at, updated_at
@@ -81,6 +87,7 @@ func (r *AccountRepository) LockForUpdate(ctx context.Context, q Querier, ids []
 }
 
 // UpdateBalance sets a new balance and bumps version/updated_at.
+// UpdateBalance 写入新余额，并递增 version、刷新 updated_at。
 func (r *AccountRepository) UpdateBalance(ctx context.Context, q Querier, id int64, balance decimal.Decimal) error {
 	_, err := q.Exec(ctx,
 		`UPDATE accounts
@@ -91,6 +98,7 @@ func (r *AccountRepository) UpdateBalance(ctx context.Context, q Querier, id int
 	if err != nil {
 		if pgErrorCode(err) == codeCheckViolation {
 			// Safety net: balance_non_negative tripped despite app checks.
+			// 安全网：应用层已校验，但仍触发了 balance_non_negative 约束。
 			return domain.ErrInsufficientFunds
 		}
 		return fmt.Errorf("update balance: %w", err)

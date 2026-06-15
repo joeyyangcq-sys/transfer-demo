@@ -10,6 +10,7 @@ import (
 )
 
 // fakeStore is an in-memory AccountStore + TransferStore + TxManager for tests.
+// fakeStore 是测试用的内存实现，同时充当 AccountStore + TransferStore + TxManager。
 type fakeStore struct {
 	accounts  map[int64]domain.Account
 	transfers []domain.Transfer

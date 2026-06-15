@@ -10,6 +10,7 @@ import (
 )
 
 // AccountStore is the account persistence behaviour the services need.
+// AccountStore 是 service 所需的账户持久化行为接口。
 type AccountStore interface {
 	Create(ctx context.Context, q repository.Querier, id int64, balance decimal.Decimal) error
 	Get(ctx context.Context, q repository.Querier, id int64) (domain.Account, error)
@@ -18,6 +19,7 @@ type AccountStore interface {
 }
 
 // TransferStore is the transfer/ledger persistence behaviour the services need.
+// TransferStore 是 service 所需的转账/分录持久化行为接口。
 type TransferStore interface {
 	FindByIdempotencyKey(ctx context.Context, q repository.Querier, key string) (domain.Transfer, bool, error)
 	Insert(ctx context.Context, q repository.Querier, t domain.Transfer) (int64, error)
@@ -25,6 +27,7 @@ type TransferStore interface {
 }
 
 // TxManager runs a function inside a database transaction.
+// TxManager 在数据库事务中运行一个函数。
 type TxManager interface {
 	WithTx(ctx context.Context, fn func(q repository.Querier) error) error
 }

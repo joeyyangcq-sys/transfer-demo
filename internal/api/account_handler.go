@@ -12,6 +12,7 @@ import (
 )
 
 // AccountHandler serves account endpoints.
+// AccountHandler 提供账户相关接口。
 type AccountHandler struct {
 	svc     *service.AccountService
 	resp    *Responder
@@ -19,11 +20,13 @@ type AccountHandler struct {
 }
 
 // NewAccountHandler creates an AccountHandler.
+// NewAccountHandler 创建一个 AccountHandler。
 func NewAccountHandler(svc *service.AccountService, resp *Responder, m *observability.Metrics) *AccountHandler {
 	return &AccountHandler{svc: svc, resp: resp, metrics: m}
 }
 
 // Create handles POST /accounts.
+// Create 处理 POST /accounts。
 func (h *AccountHandler) Create(ctx context.Context, c *app.RequestContext) {
 	var req CreateAccountRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -41,6 +44,7 @@ func (h *AccountHandler) Create(ctx context.Context, c *app.RequestContext) {
 }
 
 // Get handles GET /accounts/:account_id.
+// Get 处理 GET /accounts/:account_id。
 func (h *AccountHandler) Get(ctx context.Context, c *app.RequestContext) {
 	id, err := strconv.ParseInt(c.Param("account_id"), 10, 64)
 	if err != nil {

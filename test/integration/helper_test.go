@@ -15,6 +15,7 @@ import (
 )
 
 // env holds the wired services and pool for an integration test.
+// env 持有集成测试装配好的 service 和连接池。
 type env struct {
 	pool        *pgxpool.Pool
 	accountSvc  *service.AccountService
@@ -23,6 +24,8 @@ type env struct {
 
 // setup connects to TEST_DATABASE_URL, migrates, truncates, and wires services.
 // The test is skipped when TEST_DATABASE_URL is not set.
+// setup 连接 TEST_DATABASE_URL，执行迁移、清空表并装配 service。
+// 未设置 TEST_DATABASE_URL 时跳过测试。
 func setup(t *testing.T) *env {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")

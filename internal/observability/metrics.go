@@ -8,25 +8,30 @@ import (
 // Metrics holds the application's Prometheus collectors.
 type Metrics struct {
 	// HTTP RED metrics.
+	// HTTP RED 指标（请求量/错误/延迟）。
 	HTTPRequests *prometheus.CounterVec
 	HTTPDuration *prometheus.HistogramVec
 
 	// Business metrics.
-	Transfers       *prometheus.CounterVec // by status
+	// 业务指标。
+	Transfers       *prometheus.CounterVec // by status — 按状态
 	TransferLatency prometheus.Histogram
-	AccountsCreated *prometheus.CounterVec // by result
-	IdempotencyHits *prometheus.CounterVec // by result (hit/miss)
+	AccountsCreated *prometheus.CounterVec // by result — 按结果
+	IdempotencyHits *prometheus.CounterVec // by result (hit/miss) — 按结果（命中/未命中）
 
 	// Error classifier: every caught error increments this.
-	Errors *prometheus.CounterVec // by type, layer
+	// 错误分类器：每个被捕获的错误都会在此累加。
+	Errors *prometheus.CounterVec // by type, layer — 按类型、层
 
 	// DB pool gauges.
+	// 数据库连接池 gauge。
 	DBTotalConns    prometheus.Gauge
 	DBIdleConns     prometheus.Gauge
 	DBAcquiredConns prometheus.Gauge
 }
 
 // NewMetrics registers and returns the application metrics.
+// NewMetrics 注册并返回应用指标集合。
 func NewMetrics(reg prometheus.Registerer) *Metrics {
 	f := promauto.With(reg)
 	return &Metrics{

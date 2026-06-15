@@ -37,6 +37,7 @@ func TestTransfer_Success(t *testing.T) {
 		t.Fatalf("ledger entries = %d, want 2", len(f.ledger))
 	}
 	// debit then credit, balance_after snapshots recorded.
+	// 先借记后贷记，且记录了 balance_after 余额快照。
 	if f.ledger[0].Direction != domain.DirectionDebit || !f.ledger[0].BalanceAfter.Equal(dec("70")) {
 		t.Errorf("debit entry wrong: %+v", f.ledger[0])
 	}
@@ -56,6 +57,7 @@ func TestTransfer_InsufficientFunds(t *testing.T) {
 		t.Fatalf("err = %v, want ErrInsufficientFunds", err)
 	}
 	// Balances untouched.
+	// 余额未被改动。
 	if !f.accounts[1].Balance.Equal(dec("10")) {
 		t.Errorf("source balance changed: %s", f.accounts[1].Balance)
 	}
@@ -130,6 +132,7 @@ func TestTransfer_IdempotentReplay(t *testing.T) {
 		t.Errorf("replay returned different transfer: %d vs %d", first.ID, second.ID)
 	}
 	// Money moved only once.
+	// 资金只移动了一次。
 	if !f.accounts[1].Balance.Equal(dec("70")) {
 		t.Errorf("source balance = %s, want 70 (debited once)", f.accounts[1].Balance)
 	}
@@ -149,6 +152,7 @@ func TestTransfer_IdempotencyConflict(t *testing.T) {
 		t.Fatalf("first transfer: %v", err)
 	}
 	// Same key, different amount.
+	// 相同幂等键，不同金额。
 	_, err := svc.Transfer(context.Background(), TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("40"), IdempotencyKey: key})
 	if !errors.Is(err, domain.ErrIdempotencyConflict) {
 		t.Fatalf("err = %v, want ErrIdempotencyConflict", err)

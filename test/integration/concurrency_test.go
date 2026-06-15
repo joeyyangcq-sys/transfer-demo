@@ -14,13 +14,15 @@ import (
 
 // TestTransfer_ConcurrentNoOverdraft fires more transfers than the balance can
 // cover and asserts the account is never overdrawn and money is conserved.
+// TestTransfer_ConcurrentNoOverdraft 并发发起超过余额可覆盖的转账，
+// 断言账户永不透支且资金守恒。
 func TestTransfer_ConcurrentNoOverdraft(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	_ = e.accountSvc.Create(ctx, 1, dec("1000"))
 	_ = e.accountSvc.Create(ctx, 2, dec("0"))
 
-	const workers = 200 // 200 x 10 = 2000 requested, only 1000 available
+	const workers = 200 // 200 x 10 = 2000 requested, only 1000 available — 请求 2000，仅有 1000 可用
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var success, insufficient int
@@ -51,6 +53,7 @@ func TestTransfer_ConcurrentNoOverdraft(t *testing.T) {
 		t.Fatalf("account 1 overdrawn: %s", a1.Balance)
 	}
 	// Conservation: total stays 1000.
+	// 守恒：两账户总额始终为 1000。
 	if !a1.Balance.Add(a2.Balance).Equal(dec("1000")) {
 		t.Fatalf("money not conserved: %s + %s != 1000", a1.Balance, a2.Balance)
 	}
