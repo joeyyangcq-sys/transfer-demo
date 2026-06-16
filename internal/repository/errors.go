@@ -9,9 +9,8 @@ import (
 // PostgreSQL error codes we care about.
 // 我们关注的 PostgreSQL 错误码。
 const (
-	codeUniqueViolation     = "23505"
-	codeForeignKeyViolation = "23503"
-	codeCheckViolation      = "23514"
+	codeUniqueViolation = "23505"
+	codeCheckViolation  = "23514"
 )
 
 // pgErrorCode returns the SQLSTATE code, or "" if err is not a PgError.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/joeyyang/internal-transfers/internal/api"
 	"github.com/joeyyang/internal-transfers/internal/config"
@@ -50,7 +51,7 @@ func main() {
 	// Metrics.
 	// 指标。
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	metrics := observability.NewMetrics(reg)
 
 	// Sample DB pool stats in the background.

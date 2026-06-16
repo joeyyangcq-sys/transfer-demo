@@ -1,4 +1,4 @@
-.PHONY: run build test test-integration lint tidy docker-up docker-down migrate
+.PHONY: run build test test-integration lint tidy docker-up docker-down
 
 run:
 	go run ./cmd/server

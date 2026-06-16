@@ -32,7 +32,9 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", migrationLockID); err != nil {
 		return fmt.Errorf("acquire advisory lock: %w", err)
 	}
-	defer conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", migrationLockID)
+	// Best-effort unlock; the lock is also released when the session ends.
+	// 尽力解锁；即便失败，会话结束时锁也会自动释放。
+	defer func() { _, _ = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", migrationLockID) }()
 
 	files, err := upFiles()
 	if err != nil {
