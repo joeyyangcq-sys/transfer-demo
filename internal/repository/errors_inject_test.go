@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/shopspring/decimal"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/domain"
 )
 
 // fakeRow returns a fixed error from Scan.

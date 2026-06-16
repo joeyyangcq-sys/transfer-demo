@@ -7,8 +7,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 
-	"github.com/joeyyang/internal-transfers/internal/observability"
-	"github.com/joeyyang/internal-transfers/internal/service"
+	"github.com/joeyyang/transfer-demo/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/service"
 )
 
 // idempotencyHeader is the HTTP header carrying the optional idempotency key.

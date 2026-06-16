@@ -9,8 +9,8 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
-	"github.com/joeyyang/internal-transfers/internal/service"
+	"github.com/joeyyang/transfer-demo/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/service"
 )
 
 func dec(s string) decimal.Decimal { return decimal.RequireFromString(s) }

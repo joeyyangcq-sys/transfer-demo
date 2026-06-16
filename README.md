@@ -135,8 +135,9 @@ make run
 ```bash
 make test             # unit tests (no database needed)
 
-# Integration tests need a Postgres instance:
-export TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/transfers?sslmode=disable
+# Integration tests need a Postgres instance. Point this at a dedicated,
+# throwaway database — the tests TRUNCATE tables on each run:
+export TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/transfers_test?sslmode=disable
 make test-integration # transfer, concurrency, and idempotency tests
 ```
 

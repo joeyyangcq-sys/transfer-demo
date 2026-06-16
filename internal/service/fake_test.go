@@ -5,8 +5,8 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
-	"github.com/joeyyang/internal-transfers/internal/repository"
+	"github.com/joeyyang/transfer-demo/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/repository"
 )
 
 // fakeStore is an in-memory AccountStore + TransferStore + TxManager for tests.

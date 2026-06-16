@@ -14,11 +14,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/joeyyang/internal-transfers/internal/api"
-	"github.com/joeyyang/internal-transfers/internal/observability"
-	"github.com/joeyyang/internal-transfers/internal/platform/postgres"
-	"github.com/joeyyang/internal-transfers/internal/repository"
-	"github.com/joeyyang/internal-transfers/internal/service"
+	"github.com/joeyyang/transfer-demo/internal/api"
+	"github.com/joeyyang/transfer-demo/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/platform/postgres"
+	"github.com/joeyyang/transfer-demo/internal/repository"
+	"github.com/joeyyang/transfer-demo/internal/service"
 )
 
 // env holds the wired services, pool, and HTTP engine for an integration test.

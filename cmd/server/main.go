@@ -12,12 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
-	"github.com/joeyyang/internal-transfers/internal/api"
-	"github.com/joeyyang/internal-transfers/internal/config"
-	"github.com/joeyyang/internal-transfers/internal/observability"
-	"github.com/joeyyang/internal-transfers/internal/platform/postgres"
-	"github.com/joeyyang/internal-transfers/internal/repository"
-	"github.com/joeyyang/internal-transfers/internal/service"
+	"github.com/joeyyang/transfer-demo/internal/api"
+	"github.com/joeyyang/transfer-demo/internal/config"
+	"github.com/joeyyang/transfer-demo/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/platform/postgres"
+	"github.com/joeyyang/transfer-demo/internal/repository"
+	"github.com/joeyyang/transfer-demo/internal/service"
 )
 
 func main() {

@@ -8,8 +8,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
-	"github.com/joeyyang/internal-transfers/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/observability"
 )
 
 // Responder writes JSON responses and maps domain errors to HTTP codes,

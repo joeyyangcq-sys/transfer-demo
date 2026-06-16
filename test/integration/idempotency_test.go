@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/joeyyang/internal-transfers/internal/service"
+	"github.com/joeyyang/transfer-demo/internal/service"
 )
 
 // TestTransfer_IdempotentRetry sends the same Idempotency-Key several times,

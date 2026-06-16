@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/domain"
 )
 
 func TestValidateAmount(t *testing.T) {

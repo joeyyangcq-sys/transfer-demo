@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/joeyyang/internal-transfers/migrations"
+	"github.com/joeyyang/transfer-demo/migrations"
 )
 
 // migrationLockID is an arbitrary app-wide key for the advisory lock.

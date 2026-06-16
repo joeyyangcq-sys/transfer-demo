@@ -1,4 +1,4 @@
-module github.com/joeyyang/internal-transfers
+module github.com/joeyyang/transfer-demo
 
 go 1.26
 

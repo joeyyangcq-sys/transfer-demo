@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/shopspring/decimal"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/domain"
 )
 
 // maxDecimalPlaces matches the NUMERIC(38,18) scale.

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/domain"
 )
 
 func TestAccountService_CreateRejectsNegativeBalance(t *testing.T) {

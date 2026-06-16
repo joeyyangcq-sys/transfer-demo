@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/joeyyang/internal-transfers/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/observability"
 )
 
 // TestRecover_TurnsPanicInto500 checks the panic path: a handler panic becomes

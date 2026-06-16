@@ -9,7 +9,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/google/uuid"
 
-	"github.com/joeyyang/internal-transfers/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/observability"
 )
 
 // requestIDHeader carries a per-request correlation id.
@@ -45,7 +45,7 @@ func Observe(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 			route = "unmatched"
 		}
 		method := string(c.Method())
-		status := strconvStatus(c.Response.StatusCode())
+		status := statusClass(c.Response.StatusCode())
 
 		m.HTTPRequests.WithLabelValues(route, method, status).Inc()
 		m.HTTPDuration.WithLabelValues(route, method).Observe(elapsed.Seconds())
@@ -80,9 +80,9 @@ func Recover(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 	}
 }
 
-// strconvStatus buckets a status code into a low-cardinality label.
-// strconvStatus 把状态码归并为低基数标签。
-func strconvStatus(code int) string {
+// statusClass buckets a status code into a low-cardinality label.
+// statusClass 把状态码归并为低基数标签。
+func statusClass(code int) string {
 	switch {
 	case code >= 500:
 		return "5xx"

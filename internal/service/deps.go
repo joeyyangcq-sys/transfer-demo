@@ -5,8 +5,8 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
-	"github.com/joeyyang/internal-transfers/internal/repository"
+	"github.com/joeyyang/transfer-demo/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/repository"
 )
 
 // AccountStore is the account persistence behaviour the services need.

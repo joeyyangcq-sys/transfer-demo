@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/joeyyang/internal-transfers/internal/observability"
+	"github.com/joeyyang/transfer-demo/internal/observability"
 )
 
 // Handlers bundles the HTTP handlers needed to register routes.

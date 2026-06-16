@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/domain"
 )
 
 // ErrDuplicateIdempotencyKey signals a race where another transaction already

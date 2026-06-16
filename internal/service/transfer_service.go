@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
-	"github.com/joeyyang/internal-transfers/internal/domain"
-	"github.com/joeyyang/internal-transfers/internal/repository"
+	"github.com/joeyyang/transfer-demo/internal/domain"
+	"github.com/joeyyang/transfer-demo/internal/repository"
 )
 
 // TransferCmd is the input to a transfer.
