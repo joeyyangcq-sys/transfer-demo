@@ -60,4 +60,20 @@ func TestTransfer_ConcurrentNoOverdraft(t *testing.T) {
 	if success != 100 || insufficient != 100 {
 		t.Fatalf("success=%d insufficient=%d, want 100/100", success, insufficient)
 	}
+
+	// Macro Conservation: Total balances MUST exactly match total deposits across the system.
+	// 宏观守恒：系统中所有账户的总余额，必须严格等于所有开户注资的总和。
+	var totalBalances, totalDeposits string
+	err := e.pool.QueryRow(ctx, `
+		SELECT 
+			COALESCE(SUM(balance), 0)::text AS total_balances,
+			COALESCE((SELECT SUM(amount) FROM deposits), 0)::text AS total_deposits
+		FROM accounts
+	`).Scan(&totalBalances, &totalDeposits)
+	if err != nil {
+		t.Fatalf("audit query failed: %v", err)
+	}
+	if totalBalances != totalDeposits {
+		t.Fatalf("SYSTEM NOT CONSERVED: total balances (%s) != total deposits (%s)", totalBalances, totalDeposits)
+	}
 }
