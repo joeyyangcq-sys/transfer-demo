@@ -8,6 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/joeyyang/internal-transfers/internal/domain"
+	"github.com/joeyyang/internal-transfers/internal/repository"
 )
 
 func newTransferSvc(f *fakeStore) *TransferService {
@@ -138,6 +139,111 @@ func TestTransfer_IdempotentReplay(t *testing.T) {
 	}
 	if len(f.transfers) != 1 {
 		t.Errorf("transfers recorded = %d, want 1", len(f.transfers))
+	}
+}
+
+func TestTransfer_IdempotencyRaceResolvesToOriginal(t *testing.T) {
+	f := newFakeStore()
+	f.addAccount(1, "100")
+	f.addAccount(2, "0")
+	key := "550e8400-e29b-41d4-a716-446655440000"
+	// Simulate the lost race: another tx already committed this transfer.
+	// 模拟竞态失败：另一个事务已提交了这笔转账。
+	f.raceDup = true
+	f.seeded = domain.Transfer{ID: 99, IdempotencyKey: &key, SourceID: 1, DestinationID: 2, Amount: dec("30"), Status: domain.StatusCompleted}
+	svc := newTransferSvc(f)
+
+	got, err := svc.Transfer(context.Background(), TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("30"), IdempotencyKey: key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ID != 99 {
+		t.Errorf("resolved transfer id = %d, want 99 (the original)", got.ID)
+	}
+}
+
+func TestTransfer_IdempotencyRaceConflict(t *testing.T) {
+	f := newFakeStore()
+	f.addAccount(1, "100")
+	f.addAccount(2, "0")
+	key := "550e8400-e29b-41d4-a716-446655440000"
+	f.raceDup = true
+	// Refetched transfer has a different amount -> conflict.
+	// 回查到的转账金额不同 -> 冲突。
+	f.seeded = domain.Transfer{ID: 99, IdempotencyKey: &key, SourceID: 1, DestinationID: 2, Amount: dec("40")}
+	svc := newTransferSvc(f)
+
+	_, err := svc.Transfer(context.Background(), TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("30"), IdempotencyKey: key})
+	if !errors.Is(err, domain.ErrIdempotencyConflict) {
+		t.Fatalf("err = %v, want ErrIdempotencyConflict", err)
+	}
+}
+
+func TestTransfer_IdempotencyRaceRefetchMissing(t *testing.T) {
+	f := newFakeStore()
+	f.addAccount(1, "100")
+	f.addAccount(2, "0")
+	key := "550e8400-e29b-41d4-a716-446655440000"
+	f.raceDup = true
+	f.raceFindMiss = true // duplicate on insert, but refetch finds nothing
+	svc := newTransferSvc(f)
+
+	_, err := svc.Transfer(context.Background(), TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("30"), IdempotencyKey: key})
+	if !errors.Is(err, repository.ErrDuplicateIdempotencyKey) {
+		t.Fatalf("err = %v, want ErrDuplicateIdempotencyKey", err)
+	}
+}
+
+func TestTransfer_IdempotencyRaceRefetchError(t *testing.T) {
+	f := newFakeStore()
+	f.addAccount(1, "100")
+	f.addAccount(2, "0")
+	key := "550e8400-e29b-41d4-a716-446655440000"
+	f.raceDup = true
+	f.raceFindErr = errors.New("refetch boom") // refetch after the dup error fails
+	svc := newTransferSvc(f)
+
+	_, err := svc.Transfer(context.Background(), TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("30"), IdempotencyKey: key})
+	if err == nil || errors.Is(err, repository.ErrDuplicateIdempotencyKey) {
+		t.Fatalf("err = %v, want the refetch error", err)
+	}
+}
+
+func TestTransfer_ExecuteFailurePaths(t *testing.T) {
+	boom := errors.New("boom")
+	cases := []struct {
+		name  string
+		setup func(f *fakeStore)
+	}{
+		{"lock error", func(f *fakeStore) { f.lockErr = boom }},
+		{"source update error", func(f *fakeStore) { f.updateErr = boom; f.updateOn = 1 }},
+		{"dest update error", func(f *fakeStore) { f.updateErr = boom; f.updateOn = 2 }},
+		{"insert error", func(f *fakeStore) { f.insertErr = boom }},
+		{"debit ledger error", func(f *fakeStore) { f.ledgerErr = boom; f.ledgerOn = 1 }},
+		{"credit ledger error", func(f *fakeStore) { f.ledgerErr = boom; f.ledgerOn = 2 }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFakeStore()
+			f.addAccount(1, "100")
+			f.addAccount(2, "0")
+			tc.setup(f)
+			_, err := newTransferSvc(f).Transfer(context.Background(),
+				TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("30")})
+			if !errors.Is(err, boom) {
+				t.Fatalf("err = %v, want boom", err)
+			}
+		})
+	}
+}
+
+func TestTransfer_SourceNotFound(t *testing.T) {
+	f := newFakeStore()
+	f.addAccount(2, "0") // only the destination exists
+	_, err := newTransferSvc(f).Transfer(context.Background(),
+		TransferCmd{SourceID: 1, DestinationID: 2, Amount: dec("10")})
+	if !errors.Is(err, domain.ErrAccountNotFound) {
+		t.Fatalf("err = %v, want ErrAccountNotFound", err)
 	}
 }
 
