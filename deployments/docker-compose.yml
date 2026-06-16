@@ -21,6 +21,11 @@ services:
       APP_ADDR: ":8080"
       METRICS_ADDR: ":9090"
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/transfers?sslmode=disable"
+      # Tee JSON logs (incl. errors) to a host-mounted file.
+      # 把 JSON 日志（含错误）同时写到挂载在宿主机的文件。
+      LOG_FILE: "/logs/app.log"
+    volumes:
+      - ./logs:/logs
     ports:
       - "8080:8080"
       # Admin port (metrics + probes). In production keep this off the public

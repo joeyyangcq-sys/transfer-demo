@@ -146,6 +146,7 @@ All configuration is via environment variables (see `.env.example`):
 | `RUN_MIGRATIONS` | `true` | Run migrations on startup |
 | `SHUTDOWN_TIMEOUT_SECONDS` | `15` | Graceful shutdown budget |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+| `LOG_FILE` | — | If set, JSON logs are also written to this file (mounted to `deployments/logs/` under Docker) |
 
 ## Project layout
 

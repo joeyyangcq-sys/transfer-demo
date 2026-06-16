@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,7 +21,12 @@ import (
 )
 
 func main() {
-	log := observability.NewLogger(os.Getenv("LOG_LEVEL"))
+	log, closeLog, err := observability.NewLogger(os.Getenv("LOG_LEVEL"), os.Getenv("LOG_FILE"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() { _ = closeLog() }()
 
 	cfg, err := config.Load()
 	if err != nil {

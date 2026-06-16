@@ -9,6 +9,9 @@
 # Machine-specific compose port overrides
 deployments/docker-compose.local.yml
 
+# Mounted runtime logs
+deployments/logs/
+
 # Test / coverage
 *.out
 coverage.*
