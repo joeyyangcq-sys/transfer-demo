@@ -3,7 +3,9 @@
 package integration
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 
@@ -26,6 +28,7 @@ type env struct {
 	accountSvc  *service.AccountService
 	transferSvc *service.TransferService
 	engine      *route.Engine // public router, for HTTP-level tests — 公开路由，用于 HTTP 层测试
+	logs        *bytes.Buffer // captured JSON logs (access + error + panic) — 捕获的 JSON 日志
 }
 
 // setup connects to TEST_DATABASE_URL, migrates, truncates, and wires services.
@@ -61,10 +64,13 @@ func setup(t *testing.T) *env {
 	transferSvc := service.NewTransferService(pool, txm, accountRepo, transferRepo)
 
 	// Build the real public router so HTTP-level tests exercise handlers,
-	// DTO binding, middleware and error mapping end to end.
+	// DTO binding, middleware and error mapping end to end. The logger writes
+	// to a buffer so tests can inspect the emitted logs.
 	// 装配真实的公开路由，让 HTTP 层测试端到端覆盖 handler、DTO 绑定、中间件与错误映射。
+	// logger 写入缓冲区，便于测试检查产生的日志。
+	logs := &bytes.Buffer{}
+	logger := slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	metrics := observability.NewMetrics(prometheus.NewRegistry())
-	logger := observability.NewLogger("error")
 	resp := api.NewResponder(metrics, logger)
 	handlers := api.Handlers{
 		Account:     api.NewAccountHandler(accountSvc, resp, metrics),
@@ -79,5 +85,6 @@ func setup(t *testing.T) *env {
 		accountSvc:  accountSvc,
 		transferSvc: transferSvc,
 		engine:      h.Engine,
+		logs:        logs,
 	}
 }
