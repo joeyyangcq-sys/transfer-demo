@@ -151,10 +151,10 @@ docker run -d --name transfers-pg \
   -p 5432:5432 postgres:16-alpine
 ```
 
-**2. Configure.** Copy the sample env and point `DATABASE_URL` at your Postgres:
+**2. Configure.** Copy the sample env and point `DB_HOST` / `DB_PORT` / `DB_NAME` etc. at your Postgres:
 
 ```bash
-cp .env.example .env          # edit DATABASE_URL if your Postgres differs
+cp .env.example .env          # edit DB_* if your Postgres differs
 export $(grep -v '^#' .env | xargs)
 ```
 
@@ -200,7 +200,12 @@ make test             # unit tests (no database needed)
 
 # Integration tests need a Postgres instance. Point this at a dedicated,
 # throwaway database — the tests TRUNCATE tables on each run:
-export TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/transfers_test?sslmode=disable
+export TEST_DB_HOST=localhost
+export TEST_DB_PORT=5432
+export TEST_DB_USER=postgres
+export TEST_DB_PASSWORD=postgres
+export TEST_DB_NAME=transfers_test
+export TEST_DB_SSLMODE=disable
 make test-integration # transfer, concurrency, and idempotency tests
 ```
 
@@ -211,18 +216,51 @@ than the balance can cover, asserting no overdraft and conservation of funds.
 
 ## Configuration
 
-All configuration is via environment variables (see `.env.example`):
+The service uses [Viper](https://github.com/spf13/viper) for configuration management. It supports configuration via a YAML/JSON configuration file, environment variables, or a combination of both.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_ADDR` | `:8080` | Public HTTP listen address (business endpoints) |
-| `METRICS_ADDR` | `:9090` | Internal admin address (metrics + probes) |
-| `DATABASE_URL` | — (required) | PostgreSQL DSN |
-| `DB_MAX_CONNS` | `10` | Connection pool size |
-| `RUN_MIGRATIONS` | `true` | Run migrations on startup |
-| `SHUTDOWN_TIMEOUT_SECONDS` | `15` | Graceful shutdown budget |
-| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
-| `LOG_FILE` | — | If set, JSON logs are also written to this file (mounted to `deployments/logs/` under Docker) |
+**Priority rules:** Environment variables > Configuration file > Default values.
+
+### Using a Configuration File (Recommended for complex setups)
+
+Set the `CONFIG_FILE` environment variable to point to your configuration file (e.g., `export CONFIG_FILE=config.yaml`). The file can be in YAML, JSON, TOML, etc. See [`config.example.yaml`](config.example.yaml) for a complete template.
+
+Example `config.yaml`:
+```yaml
+addr: ":8080"
+metrics_addr: ":9090"
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  dbname: "transfers"
+  sslmode: "disable"
+  max_conns: 10
+shutdown_timeout: 15
+run_migrations: true
+log_level: "info"
+```
+
+### Using Environment Variables (Recommended for Docker/Kubernetes)
+
+If `CONFIG_FILE` is not set, or if you want to override specific file settings, you can use environment variables. See [`.env.example`](.env.example).
+
+| Environment Variable | YAML Path | Default | Description |
+|----------------------|-----------|---------|-------------|
+| `CONFIG_FILE` | — | — | Path to a configuration file |
+| `APP_ADDR` | `addr` | `:8080` | Public HTTP listen address (business endpoints) |
+| `METRICS_ADDR` | `metrics_addr` | `:9090` | Internal admin address (metrics + probes) |
+| `DB_HOST` | `database.host` | `localhost` | PostgreSQL host |
+| `DB_PORT` | `database.port` | `5432` | PostgreSQL port |
+| `DB_USER` | `database.user` | `postgres` | PostgreSQL user |
+| `DB_PASSWORD` | `database.password` | `""` | PostgreSQL password |
+| `DB_NAME` | `database.dbname` | `transfers` | PostgreSQL database name |
+| `DB_SSLMODE` | `database.sslmode` | `disable` | PostgreSQL SSL mode |
+| `DB_MAX_CONNS` | `database.max_conns` | `10` | Connection pool size |
+| `RUN_MIGRATIONS` | `run_migrations` | `true` | Run migrations on startup |
+| `SHUTDOWN_TIMEOUT_SECONDS`| `shutdown_timeout` | `15` | Graceful shutdown budget |
+| `LOG_LEVEL` | `log_level` | `info` | `debug` / `info` / `warn` / `error` |
+| `LOG_FILE` | `log_file` | `""` | If set, JSON logs are also written to this file |
 
 ## Project layout
 
@@ -289,7 +327,7 @@ Not implemented here (out of scope for this service), but worth noting:
   production, running migrations as a separate one-off job is recommended.
 - **Connection limits**: with N replicas, `DB_MAX_CONNS × N` must stay under the
   database `max_connections`. RDS Proxy is a good fit for pooling and failover.
-- **Secrets**: inject `DATABASE_URL` from Secrets Manager / SSM, not a committed
+- **Secrets**: inject `DB_PASSWORD` from Secrets Manager / SSM, not a committed
   file. RDS IAM authentication avoids long-lived passwords.
 - **TLS**: use `sslmode=require` (or `verify-full` with the RDS CA) in production.
 - **Port separation**: business endpoints and the admin endpoints (`/metrics`,

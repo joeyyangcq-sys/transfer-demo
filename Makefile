@@ -20,8 +20,9 @@ build:
 test:
 	go test ./...
 
+.PHONY: test-integration
 test-integration:
-	@test -n "$(TEST_DATABASE_URL)" || (echo "set TEST_DATABASE_URL to a Postgres DSN" && exit 1)
+	@test -n "$(TEST_DB_HOST)" || (echo "set TEST_DB_HOST to a Postgres host" && exit 1)
 	go test -tags=integration -race ./test/...
 
 lint:

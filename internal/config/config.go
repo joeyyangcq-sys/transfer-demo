@@ -3,75 +3,106 @@ package config
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
-// Config holds runtime settings loaded from environment variables.
-// Config 保存从环境变量加载的运行时配置。
-type Config struct {
-	Addr            string        // public HTTP listen address, e.g. ":8080" — 公开 HTTP 监听地址
-	MetricsAddr     string        // internal admin/metrics address, e.g. ":9090" — 内部 admin/指标监听地址
-	DatabaseURL     string        // PostgreSQL DSN — PostgreSQL 连接串
-	DBMaxConns      int32         // pgx pool max connections — pgx 连接池最大连接数
-	ShutdownTimeout time.Duration // graceful shutdown budget — 优雅关闭的超时预算
-	RunMigrations   bool          // run migrations on startup — 启动时是否执行迁移
+// DBConfig holds structured PostgreSQL configuration.
+// DBConfig 保存结构化的 PostgreSQL 配置。
+type DBConfig struct {
+	Host     string `mapstructure:"host"`      // e.g. "localhost" or "postgres"
+	Port     int    `mapstructure:"port"`      // e.g. 5432
+	User     string `mapstructure:"user"`      // database user
+	Password string `mapstructure:"password"`  // database password
+	DBName   string `mapstructure:"dbname"`    // database name
+	SSLMode  string `mapstructure:"sslmode"`   // e.g. "disable", "require"
+	MaxConns int32  `mapstructure:"max_conns"` // pgx pool max connections
 }
 
-// Load reads configuration from the environment, applying defaults.
-// Load 从环境变量读取配置，并套用默认值。
+// DSN constructs the PostgreSQL connection string from structured fields.
+// DSN 从结构化字段构造 PostgreSQL 连接字符串。
+func (d DBConfig) DSN() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		d.User, d.Password, d.Host, d.Port, d.DBName, d.SSLMode)
+}
+
+// Config holds runtime settings loaded from configuration file or environment variables.
+// Config 保存从配置文件或环境变量加载的运行时配置。
+type Config struct {
+	Addr            string        `mapstructure:"addr"`           // public HTTP listen address, e.g. ":8080"
+	MetricsAddr     string        `mapstructure:"metrics_addr"`   // internal admin/metrics address, e.g. ":9090"
+	Database        DBConfig      `mapstructure:"database"`       // structured PostgreSQL configuration
+	ShutdownTimeout time.Duration `mapstructure:"-"`              // graceful shutdown budget (mapped manually from int)
+	RunMigrations   bool          `mapstructure:"run_migrations"` // run migrations on startup
+	LogLevel        string        `mapstructure:"log_level"`      // log level: debug, info, warn, error
+	LogFile         string        `mapstructure:"log_file"`       // optional log file path
+}
+
+// Load reads configuration from a file (if CONFIG_FILE is set) and then from the environment, applying defaults.
+// Load 先从配置文件读取（如果指定了 CONFIG_FILE），然后被环境变量覆盖，并套用默认值。
 func Load() (Config, error) {
-	cfg := Config{
-		Addr:            getEnv("APP_ADDR", ":8080"),
-		MetricsAddr:     getEnv("METRICS_ADDR", ":9090"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		DBMaxConns:      int32(getEnvInt("DB_MAX_CONNS", 10)),
-		ShutdownTimeout: time.Duration(getEnvInt("SHUTDOWN_TIMEOUT_SECONDS", 15)) * time.Second,
-		RunMigrations:   getEnvBool("RUN_MIGRATIONS", true),
+	v := viper.New()
+
+	// 设置默认值 (Defaults)
+	v.SetDefault("addr", ":8080")
+	v.SetDefault("metrics_addr", ":9090")
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.user", "postgres")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.dbname", "transfers")
+	v.SetDefault("database.sslmode", "disable")
+	v.SetDefault("database.max_conns", 10)
+	v.SetDefault("shutdown_timeout_seconds", 15)
+	v.SetDefault("run_migrations", true)
+	v.SetDefault("log_level", "info")
+	v.SetDefault("log_file", "")
+
+	// 绑定环境变量，确保向下兼容 (Bind Environment Variables)
+	_ = v.BindEnv("addr", "APP_ADDR")
+	_ = v.BindEnv("metrics_addr", "METRICS_ADDR")
+	_ = v.BindEnv("database.host", "DB_HOST")
+	_ = v.BindEnv("database.port", "DB_PORT")
+	_ = v.BindEnv("database.user", "DB_USER")
+	_ = v.BindEnv("database.password", "DB_PASSWORD")
+	_ = v.BindEnv("database.dbname", "DB_NAME")
+	_ = v.BindEnv("database.sslmode", "DB_SSLMODE")
+	_ = v.BindEnv("database.max_conns", "DB_MAX_CONNS")
+	_ = v.BindEnv("shutdown_timeout_seconds", "SHUTDOWN_TIMEOUT_SECONDS")
+	_ = v.BindEnv("run_migrations", "RUN_MIGRATIONS")
+	_ = v.BindEnv("log_level", "LOG_LEVEL")
+	_ = v.BindEnv("log_file", "LOG_FILE")
+
+	// 加载配置文件 (Load config file if specified)
+	if configFile := os.Getenv("CONFIG_FILE"); configFile != "" {
+		v.SetConfigFile(configFile)
+		if err := v.ReadInConfig(); err != nil {
+			return Config{}, fmt.Errorf("failed to read config file: %w", err)
+		}
+	} else {
+		// 让 Viper 也能自动读取同名环境变量
+		v.AutomaticEnv()
 	}
 
-	if cfg.DatabaseURL == "" {
-		return Config{}, fmt.Errorf("DATABASE_URL is required")
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-	if cfg.DBMaxConns <= 0 {
-		return Config{}, fmt.Errorf("DB_MAX_CONNS must be positive")
+
+	// 特殊处理：将配置中的 int 转换为 time.Duration
+	timeoutSec := v.GetInt("shutdown_timeout_seconds")
+	if timeoutSec == 15 && v.GetInt("shutdown_timeout") != 0 {
+		timeoutSec = v.GetInt("shutdown_timeout") // 兼容 YAML 里的名称
+	}
+	cfg.ShutdownTimeout = time.Duration(timeoutSec) * time.Second
+
+	// 必填项校验
+	if cfg.Database.Host == "" || cfg.Database.DBName == "" {
+		return Config{}, fmt.Errorf("database host and dbname are required")
+	}
+	if cfg.Database.MaxConns <= 0 {
+		return Config{}, fmt.Errorf("database max_conns must be positive")
 	}
 	return cfg, nil
-}
-
-// getEnv returns the env value for key, or fallback when unset/empty.
-// getEnv 返回 key 对应的环境变量值，未设置或为空时返回 fallback。
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-// getEnvInt parses an int env value, falling back on missing/invalid input.
-// getEnvInt 解析整型环境变量，缺失或非法时返回 fallback。
-func getEnvInt(key string, fallback int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return fallback
-	}
-	return n
-}
-
-// getEnvBool parses a bool env value, falling back on missing/invalid input.
-// getEnvBool 解析布尔型环境变量，缺失或非法时返回 fallback。
-func getEnvBool(key string, fallback bool) bool {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return fallback
-	}
-	return b
 }

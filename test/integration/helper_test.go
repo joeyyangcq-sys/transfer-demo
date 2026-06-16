@@ -5,6 +5,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -31,16 +32,37 @@ type env struct {
 	logs        *bytes.Buffer // captured JSON logs (access + error + panic) — 捕获的 JSON 日志
 }
 
-// setup connects to TEST_DATABASE_URL, migrates, truncates, and wires services.
-// The test is skipped when TEST_DATABASE_URL is not set.
-// setup 连接 TEST_DATABASE_URL，执行迁移、清空表并装配 service。
-// 未设置 TEST_DATABASE_URL 时跳过测试。
+// setup connects to TEST_DB_*, migrates, truncates, and wires services.
+// The test is skipped when TEST_DB_HOST is not set.
+// setup 连接 TEST_DB_*，执行迁移、清空表并装配 service。
+// 未设置 TEST_DB_HOST 时跳过测试。
 func setup(t *testing.T) *env {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+
+	host := os.Getenv("TEST_DB_HOST")
+	if host == "" {
+		t.Skip("TEST_DB_HOST not set; skipping integration test")
 	}
+
+	port := os.Getenv("TEST_DB_PORT")
+	if port == "" {
+		port = "5432"
+	}
+	user := os.Getenv("TEST_DB_USER")
+	if user == "" {
+		user = "postgres"
+	}
+	password := os.Getenv("TEST_DB_PASSWORD")
+	dbname := os.Getenv("TEST_DB_NAME")
+	if dbname == "" {
+		dbname = "transfers_test"
+	}
+	sslmode := os.Getenv("TEST_DB_SSLMODE")
+	if sslmode == "" {
+		sslmode = "disable"
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode)
 
 	ctx := context.Background()
 	pool, err := postgres.NewPool(ctx, dsn, 20, nil)

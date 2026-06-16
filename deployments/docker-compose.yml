@@ -18,14 +18,13 @@ services:
       context: ..
       dockerfile: Dockerfile
     environment:
-      APP_ADDR: ":8080"
-      METRICS_ADDR: ":9090"
-      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/transfers?sslmode=disable"
-      # Tee JSON logs (incl. errors) to a host-mounted file.
-      # 把 JSON 日志（含错误）同时写到挂载在宿主机的文件。
-      LOG_FILE: "/logs/app.log"
+      # The application is fully driven by the mounted configuration file;
+      # no per-service environment variables are needed.
+      # 应用完全由挂载的配置文件驱动，无需任何运行时环境变量。
+      CONFIG_FILE: "/app-config/config.yaml"
     volumes:
       - ./logs:/logs
+      - ./config.yaml:/app-config/config.yaml:ro
     ports:
       - "8080:8080"
       # Admin port (metrics + probes). In production keep this off the public

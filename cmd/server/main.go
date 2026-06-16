@@ -21,18 +21,22 @@ import (
 )
 
 func main() {
-	log, closeLog, err := observability.NewLogger(os.Getenv("LOG_LEVEL"), os.Getenv("LOG_FILE"))
+	// 1. Load config first.
+	// 1. 先加载配置。
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 2. Initialize logger based on config.
+	// 2. 根据配置初始化日志。
+	log, closeLog, err := observability.NewLogger(cfg.LogLevel, cfg.LogFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
 		os.Exit(1)
 	}
 	defer func() { _ = closeLog() }()
-
-	cfg, err := config.Load()
-	if err != nil {
-		log.Error("load config", "error", err)
-		os.Exit(1)
-	}
 
 	// Root context cancelled on SIGINT/SIGTERM (ECS sends SIGTERM).
 	// 收到 SIGINT/SIGTERM 时取消根 context（ECS 停容器发的是 SIGTERM）。
@@ -51,7 +55,7 @@ func main() {
 		metrics.DBQueryDuration.WithLabelValues(op).Observe(sec)
 	})
 
-	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL, cfg.DBMaxConns, tracer)
+	pool, err := postgres.NewPool(ctx, cfg.Database.DSN(), cfg.Database.MaxConns, tracer)
 	if err != nil {
 		log.Error("connect database", "error", err)
 		os.Exit(1)

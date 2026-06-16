@@ -1,0 +1,14 @@
+addr: ":8080"
+metrics_addr: ":9090"
+database:
+  host: "localhost"
+  port: 5433
+  user: "postgres"
+  password: "postgres"
+  dbname: "transfers"
+  sslmode: "disable"
+  max_conns: 10
+shutdown_timeout: 15
+run_migrations: true
+log_level: "info"
+log_file: ""
