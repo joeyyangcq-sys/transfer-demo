@@ -91,11 +91,24 @@ Errors return a JSON body `{"error": "..."}` with an appropriate status:
 ## Quick start (Docker)
 
 ```bash
-make docker-up        # builds the image, starts Postgres + the service
+make docker-up        # builds the image, starts Postgres, the service,
+                      # Prometheus and Grafana
 ```
 
 Business endpoints are on `:8080`; metrics and probes on `:9090`. Migrations
-run automatically on startup.
+run automatically on startup. The compose stack also brings up an observability
+stack:
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| Service (business) | http://localhost:8080 | the API |
+| Service (admin) | http://localhost:9090/metrics | metrics + probes |
+| Prometheus | http://localhost:9090 (container) / mapped host port | scrapes `app:9090` |
+| Grafana | http://localhost:3000 | anonymous access; Prometheus datasource and an "Internal Transfers" dashboard are auto-provisioned |
+
+If some of these host ports are already taken on your machine, add a
+`deployments/docker-compose.local.yml` with `ports: !override` entries and run
+`docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.local.yml up -d`.
 
 ## Run locally
 

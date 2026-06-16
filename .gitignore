@@ -6,6 +6,9 @@
 # Env
 .env
 
+# Machine-specific compose port overrides
+deployments/docker-compose.local.yml
+
 # Test / coverage
 *.out
 coverage.*

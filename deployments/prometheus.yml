@@ -1,0 +1,11 @@
+# Prometheus scrape config for local development.
+# 本地开发用的 Prometheus 抓取配置。
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # Scrape the service's internal admin port (METRICS_ADDR).
+  # 抓取服务的内部 admin 端口（METRICS_ADDR）。
+  - job_name: internal-transfers
+    static_configs:
+      - targets: ["app:9090"]
