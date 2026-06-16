@@ -27,11 +27,11 @@ paths:
         "201":
           description: Account created (empty body)
         "400":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/BadRequest"
         "409":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/AccountConflict"
         "500":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/InternalError"
 
   /accounts/{account_id}:
     get:
@@ -52,11 +52,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/AccountResponse"
         "400":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/NotFound"
         "500":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/InternalError"
 
   /transactions:
     post:
@@ -80,24 +80,72 @@ paths:
         "201":
           description: Transfer completed (empty body)
         "400":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/NotFound"
         "409":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/InsufficientFunds"
         "422":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/IdempotencyConflict"
         "500":
-          $ref: "#/components/responses/Error"
+          $ref: "#/components/responses/InternalError"
 
 components:
   responses:
-    Error:
-      description: Error response
+    # Every error shares the Error schema (shape {"error": "..."}); each response
+    # carries an example matching what the handler actually returns for that code.
+    # 所有错误共用 Error 结构（形状 {"error": "..."}）；每个响应的样例与该状态码下
+    # handler 实际返回的消息一致。
+    BadRequest:
+      description: >
+        Invalid input — malformed JSON, a non-positive or too-precise amount,
+        source equal to destination, or a malformed idempotency key.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: invalid amount
+    NotFound:
+      description: The referenced account does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: account 123 not found
+    AccountConflict:
+      description: An account with this id already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: account already exists
+    InsufficientFunds:
+      description: The source account balance cannot cover the transfer.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: insufficient funds
+    IdempotencyConflict:
+      description: The Idempotency-Key was reused with different request parameters.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: idempotency key conflict
+    InternalError:
+      description: Unexpected server or database error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: internal server error
 
   schemas:
     CreateAccountRequest:
@@ -147,4 +195,4 @@ components:
       properties:
         error:
           type: string
-          example: insufficient funds
+          description: Human-readable error message.
