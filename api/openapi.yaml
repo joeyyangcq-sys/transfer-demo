@@ -158,7 +158,12 @@ components:
           example: 123
         initial_balance:
           type: string
-          description: Decimal string, up to 18 fractional digits.
+          format: decimal
+          pattern: '^[0-9]{1,20}(\.[0-9]{1,18})?$'
+          description: >
+            Opening balance as a non-negative decimal string (no sign). Up to 20
+            integer digits and 18 fractional digits — magnitude must be < 1e20.
+            Sent as a string to preserve precision.
           example: "100.23344"
 
     AccountResponse:
@@ -171,6 +176,11 @@ components:
           example: 123
         balance:
           type: string
+          format: decimal
+          pattern: '^[0-9]{1,20}(\.[0-9]{1,18})?$'
+          description: >
+            Current balance as a non-negative decimal string. Up to 20 integer
+            digits and 18 fractional digits (NUMERIC(38,18)).
           example: "100.23344"
 
     TransferRequest:
@@ -187,6 +197,12 @@ components:
           example: 456
         amount:
           type: string
+          format: decimal
+          pattern: '^[0-9]{1,20}(\.[0-9]{1,18})?$'
+          description: >
+            Transfer amount as a strictly positive decimal string (no sign, must
+            be > 0). Up to 20 integer digits and 18 fractional digits — magnitude
+            must be < 1e20. Sent as a string to preserve precision.
           example: "100.12345"
 
     Error:

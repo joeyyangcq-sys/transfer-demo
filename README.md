@@ -102,8 +102,8 @@ Errors return a JSON body `{"error": "..."}` with an appropriate status:
 
 | Status | Cases |
 |--------|-------|
-| 400 | invalid JSON, non-positive amount, source equals destination, malformed idempotency key |
-| 404 | account not found |
+| 400 | invalid JSON, non-positive or too-precise amount, source equals destination, malformed idempotency key |
+| 404 | account not found (the message names the missing id, e.g. `account 123 not found`) |
 | 409 | account already exists, insufficient funds |
 | 422 | idempotency key reused with different parameters |
 | 500 | unexpected server/database error |
