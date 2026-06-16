@@ -14,7 +14,9 @@ HTTP framework.
   deadlocks) plus a `CHECK (balance >= 0)` safety net.
 - **Double-entry ledger** for full auditability: every transfer writes a debit
   and a credit entry, each with a `balance_after` snapshot, so any account's
-  history can be replayed.
+  history can be replayed. Initial account funding is recorded in an immutable
+  `deposits` log, so every balance traces back to a deposit and the system can be
+  audited for conservation of funds (`SUM(balances) == SUM(deposits)`).
 - **Idempotency** via the optional `Idempotency-Key` HTTP header — retries never
   move money twice.
 - **Observability**: Prometheus metrics at `/metrics`, plus liveness and
@@ -279,6 +281,9 @@ test/integration        end-to-end tests (transfer, concurrency, idempotency)
 ## Data model
 
 - `accounts` — current balance snapshot, with a non-negative `CHECK`.
+- `deposits` — immutable log of initial account funding; one row per account
+  opened with a positive balance (a zero opening balance writes no row). This is
+  the source of truth for money entering the system.
 - `transfers` — immutable log of each transfer; holds the optional idempotency
   key under a partial unique index.
 - `ledger_entries` — two rows per transfer (debit + credit) with a
@@ -300,6 +305,16 @@ SELECT
   SUM(amount) FILTER (WHERE direction = 'debit')  AS total_debit,
   SUM(amount) FILTER (WHERE direction = 'credit') AS total_credit
 FROM ledger_entries;  -- the two totals must be equal
+```
+
+Conservation of funds — every account balance traces back to a deposit, since
+transfers only move money and never create it:
+
+```sql
+SELECT
+  (SELECT COALESCE(SUM(balance), 0) FROM accounts) AS total_balances,
+  (SELECT COALESCE(SUM(amount),  0) FROM deposits) AS total_deposits;
+-- the two totals must be equal
 ```
 
 ## Assumptions
