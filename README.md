@@ -34,7 +34,7 @@ Public port (`APP_ADDR`, default `:8080`):
 |--------|----------------------------|-----------------------------------|---------|
 | POST   | `/accounts`                | Create an account                 | 201     |
 | GET    | `/accounts/{account_id}`   | Get an account and its balance    | 200     |
-| POST   | `/transactions`            | Transfer between two accounts     | 201     |
+| POST   | `/transactions`            | Transfer between two accounts     | 200     |
 
 Internal admin port (`METRICS_ADDR`, default `:9090`):
 
@@ -66,10 +66,26 @@ curl -X POST localhost:8080/transactions \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000' \
   -d '{"source_account_id": 123, "destination_account_id": 456, "amount": "100.12345"}'
+# 200 OK
+# {"transaction_id":1,"source_account_id":123,"destination_account_id":456,"amount":"100.12345","status":"completed"}
 ```
 
-The `Idempotency-Key` header is optional. When supplied, retrying the same
-request returns the original result without moving money again.
+A successful transfer returns `200` with the recorded transaction. The
+`Idempotency-Key` header is optional. When supplied, retrying the same request
+returns the original transaction (same `transaction_id`) without moving money
+again; reusing a key with different parameters returns `422`.
+
+**Design note — why optional, not required.** A transfer is a money-moving
+operation that clients retry on timeout, so idempotency is the mechanism that
+prevents a retry from double-charging. That protection only works if the client
+sends the *same* key on every retry. A stricter design would make the header
+**required** and reject requests without it (`400`), forcing every caller to
+take responsibility for a stable key — this is what production payment systems
+(Stripe, PayPal) effectively do. We keep it **optional** here to stay easy to
+call (curl/Postman work with no setup); the idempotency *mechanism* itself is
+fully implemented regardless (a hit returns the original transfer; a parameter
+mismatch returns `422`). For a real production deployment, the recommendation is
+to make the header required and enforce it at the API edge.
 
 ### API documentation (kept in sync)
 
@@ -89,8 +105,8 @@ Errors return a JSON body `{"error": "..."}` with an appropriate status:
 
 | Status | Cases |
 |--------|-------|
-| 400 | invalid JSON, non-positive amount, source equals destination, malformed idempotency key |
-| 404 | account not found |
+| 400 | invalid JSON, non-positive or too-precise amount, source equals destination, malformed idempotency key |
+| 404 | account not found (the message names the missing id, e.g. `account 123 not found`) |
 | 409 | account already exists, insufficient funds |
 | 422 | idempotency key reused with different parameters |
 | 500 | unexpected server/database error |
@@ -256,7 +272,9 @@ FROM ledger_entries;  -- the two totals must be equal
   existing id returns 409.
 - The `Idempotency-Key` header is optional; without it a transfer is processed
   non-idempotently. The request body matches the spec exactly — idempotency is
-  carried entirely in the header.
+  carried entirely in the header. See the design note under
+  [Transfer](#transfer) for why it is optional rather than required, and what a
+  production deployment should do instead.
 - Because the system is a single Postgres instance with synchronous
   transactions, a transfer is either fully committed or fully rolled back; there
   is no need for a pending state, two-phase commit, or sagas.

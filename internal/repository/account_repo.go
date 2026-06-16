@@ -37,8 +37,11 @@ func (r *AccountRepository) Create(ctx context.Context, q Querier, id int64, bal
 	return nil
 }
 
-// Get returns one account. Returns ErrAccountNotFound when missing.
-// Get 返回单个账户；不存在时返回 ErrAccountNotFound。
+// Get returns one account. When missing it returns an AccountNotFoundError
+// naming the id, which unwraps to ErrAccountNotFound (so errors.Is and the HTTP
+// 404 mapping still hold).
+// Get 返回单个账户；不存在时返回带 id 的 AccountNotFoundError，
+// 它会 Unwrap 到 ErrAccountNotFound（因此 errors.Is 与 HTTP 404 映射照常成立）。
 func (r *AccountRepository) Get(ctx context.Context, q Querier, id int64) (domain.Account, error) {
 	var a domain.Account
 	err := q.QueryRow(ctx,
@@ -47,7 +50,7 @@ func (r *AccountRepository) Get(ctx context.Context, q Querier, id int64) (domai
 	).Scan(&a.ID, &a.Balance, &a.Version, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Account{}, domain.ErrAccountNotFound
+			return domain.Account{}, domain.AccountNotFound(id)
 		}
 		return domain.Account{}, fmt.Errorf("get account: %w", err)
 	}
