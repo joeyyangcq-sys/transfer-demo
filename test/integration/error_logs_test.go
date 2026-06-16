@@ -55,6 +55,7 @@ func TestErrorLogs_ClientErrorsNotErrorLogged(t *testing.T) {
 		{"handler: bad account id", "GET", "/accounts/not-a-number", "", nil, 400},
 		{"service: invalid amount", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":2,"amount":"0"}`, []ut.Header{jsonHeader}, 400},
 		{"service: same account", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":1,"amount":"1"}`, []ut.Header{jsonHeader}, 400},
+		{"handler: bad idempotency key", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":2,"amount":"1"}`, []ut.Header{jsonHeader, {Key: "Idempotency-Key", Value: "not-a-uuid"}}, 400},
 		{"service: account not found", "GET", "/accounts/999", "", nil, 404},
 		{"service: account exists", "POST", "/accounts", `{"account_id":1,"initial_balance":"5"}`, []ut.Header{jsonHeader}, 409},
 		{"service: insufficient funds", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":2,"amount":"9999"}`, []ut.Header{jsonHeader}, 409},
