@@ -47,7 +47,7 @@ func (r *AccountRepository) Get(ctx context.Context, q Querier, id int64) (domai
 	).Scan(&a.ID, &a.Balance, &a.Version, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Account{}, domain.ErrAccountNotFound
+			return domain.Account{}, domain.AccountNotFound(id)
 		}
 		return domain.Account{}, fmt.Errorf("get account: %w", err)
 	}

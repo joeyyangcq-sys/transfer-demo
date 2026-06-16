@@ -93,11 +93,11 @@ func (s *TransferService) execute(ctx context.Context, q repository.Querier, cmd
 	}
 	source, ok := locked[cmd.SourceID]
 	if !ok {
-		return domain.Transfer{}, domain.ErrAccountNotFound
+		return domain.Transfer{}, domain.AccountNotFound(cmd.SourceID)
 	}
 	dest, ok := locked[cmd.DestinationID]
 	if !ok {
-		return domain.Transfer{}, domain.ErrAccountNotFound
+		return domain.Transfer{}, domain.AccountNotFound(cmd.DestinationID)
 	}
 
 	// Reject if the source cannot cover the amount.
