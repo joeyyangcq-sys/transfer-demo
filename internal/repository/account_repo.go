@@ -22,7 +22,8 @@ func NewAccountRepository() *AccountRepository {
 }
 
 // Create inserts a new account. Returns ErrAccountAlreadyExists on duplicate id.
-// Create 插入一个新账户；id 重复时返回 ErrAccountAlreadyExists。
+// If the balance is greater than zero, it also inserts a record into the deposits table.
+// Create 插入一个新账户；若余额大于 0，还会向 deposits 表插入一条记录。id 重复时返回 ErrAccountAlreadyExists。
 func (r *AccountRepository) Create(ctx context.Context, q Querier, id int64, balance decimal.Decimal) error {
 	_, err := q.Exec(ctx,
 		`INSERT INTO accounts (id, balance) VALUES ($1, $2)`,
@@ -34,6 +35,17 @@ func (r *AccountRepository) Create(ctx context.Context, q Querier, id int64, bal
 		}
 		return fmt.Errorf("insert account: %w", err)
 	}
+
+	if balance.Sign() > 0 {
+		_, err = q.Exec(ctx,
+			`INSERT INTO deposits (account_id, amount) VALUES ($1, $2)`,
+			id, balance,
+		)
+		if err != nil {
+			return fmt.Errorf("insert deposit: %w", err)
+		}
+	}
+
 	return nil
 }
 

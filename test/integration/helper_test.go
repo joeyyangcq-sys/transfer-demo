@@ -82,7 +82,7 @@ func setup(t *testing.T) *env {
 	transferRepo := repository.NewTransferRepository()
 	txm := repository.NewTxManager(pool)
 
-	accountSvc := service.NewAccountService(pool, accountRepo)
+	accountSvc := service.NewAccountService(pool, txm, accountRepo)
 	transferSvc := service.NewTransferService(pool, txm, accountRepo, transferRepo)
 
 	// Build the real public router so HTTP-level tests drive handlers,

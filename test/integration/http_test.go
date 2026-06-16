@@ -93,6 +93,13 @@ func TestHTTP_AccountErrors(t *testing.T) {
 	} else if want := "invalid account id"; invalidIDBody.Error != want {
 		t.Errorf("400 error = %q, want %q", invalidIDBody.Error, want)
 	}
+
+	// Negative account id should be rejected as invalid input, not reported as a missing account.
+	// 负数 account id 应视为非法输入返回 400，而不是误报为 404。
+	w = ut.PerformRequest(e.engine, "GET", "/accounts/-1", nil)
+	if got := w.Result().StatusCode(); got != 400 {
+		t.Errorf("negative account_id status = %d, want 400", got)
+	}
 }
 
 // TestHTTP_Transfer drives a transfer over HTTP and checks the moved balances.

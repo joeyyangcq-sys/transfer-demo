@@ -2,7 +2,10 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/spf13/viper"
@@ -23,8 +26,22 @@ type DBConfig struct {
 // DSN constructs the PostgreSQL connection string from structured fields.
 // DSN 从结构化字段构造 PostgreSQL 连接字符串。
 func (d DBConfig) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		d.User, d.Password, d.Host, d.Port, d.DBName, d.SSLMode)
+	hostPort := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
+	values := url.Values{}
+	values.Set("sslmode", d.SSLMode)
+
+	u := &url.URL{
+		Scheme:   "postgres",
+		Host:     hostPort,
+		Path:     d.DBName,
+		RawQuery: values.Encode(),
+	}
+	if d.Password != "" {
+		u.User = url.UserPassword(d.User, d.Password)
+	} else {
+		u.User = url.User(d.User)
+	}
+	return u.String()
 }
 
 // Config holds runtime settings loaded from configuration file or environment variables.

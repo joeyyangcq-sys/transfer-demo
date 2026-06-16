@@ -11,6 +11,15 @@ CREATE TABLE IF NOT EXISTS accounts (
     CONSTRAINT balance_non_negative CHECK (balance >= 0)
 );
 
+-- Immutable deposit log for initial account funding.
+-- 不可变的充值日志，用于追溯账户的初始资金来源。
+CREATE TABLE IF NOT EXISTS deposits (
+    id         BIGSERIAL      PRIMARY KEY,
+    account_id BIGINT         NOT NULL REFERENCES accounts(id),
+    amount     NUMERIC(38, 18) NOT NULL CHECK (amount > 0),
+    created_at TIMESTAMPTZ    NOT NULL DEFAULT now()
+);
+
 -- Immutable transfer log. Holds the optional idempotency key.
 -- 不可变的转账日志；保存可选的幂等键。
 CREATE TABLE IF NOT EXISTS transfers (

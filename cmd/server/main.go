@@ -80,7 +80,7 @@ func main() {
 	transferRepo := repository.NewTransferRepository()
 	txManager := repository.NewTxManager(pool)
 
-	accountSvc := service.NewAccountService(pool, accountRepo)
+	accountSvc := service.NewAccountService(pool, txManager, accountRepo)
 	transferSvc := service.NewTransferService(pool, txManager, accountRepo, transferRepo)
 
 	resp := api.NewResponder(metrics, log)

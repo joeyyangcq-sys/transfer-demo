@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -120,5 +121,27 @@ database:
 	}
 	if cfg.Database.Host != "env-host" {
 		t.Errorf("expected DB Host 'env-host' (from env), got %q", cfg.Database.Host)
+	}
+}
+
+func TestDBConfig_DSNEscapesCredentials(t *testing.T) {
+	cfg := DBConfig{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "user@name",
+		Password: "p@ss:word/with?chars",
+		DBName:   "transfers",
+		SSLMode:  "disable",
+	}
+
+	dsn := cfg.DSN()
+	if strings.Contains(dsn, "p@ss:word/with?chars") {
+		t.Fatalf("dsn leaked raw password characters: %s", dsn)
+	}
+	if !strings.Contains(dsn, "postgres://user%40name:") {
+		t.Fatalf("dsn did not escape username: %s", dsn)
+	}
+	if !strings.Contains(dsn, "@localhost:5432/transfers?sslmode=disable") {
+		t.Fatalf("dsn has unexpected structure: %s", dsn)
 	}
 }
