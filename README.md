@@ -122,13 +122,60 @@ If some of these host ports are already taken on your machine, add a
 `deployments/docker-compose.local.yml` with `ports: !override` entries and run
 `docker compose -f deployments/docker-compose.yml -f deployments/docker-compose.local.yml up -d`.
 
-## Run locally
+## Run locally (without Docker)
+
+Run the service directly on your machine against a local Postgres. This needs
+only Go and a reachable Postgres; migrations run automatically on startup.
+
+**1. Start Postgres.** Use an existing instance, or spin up a throwaway one:
 
 ```bash
-cp .env.example .env  # then point DATABASE_URL at your Postgres
-export $(grep -v '^#' .env | xargs)
-make run
+docker run -d --name transfers-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=transfers \
+  -p 5432:5432 postgres:16-alpine
 ```
+
+**2. Configure.** Copy the sample env and point `DATABASE_URL` at your Postgres:
+
+```bash
+cp .env.example .env          # edit DATABASE_URL if your Postgres differs
+export $(grep -v '^#' .env | xargs)
+```
+
+**3. Build and run.** Either run from source or build a binary:
+
+```bash
+make run                      # go run ./cmd/server
+# or:
+make build && ./bin/server    # compiled binary
+```
+
+On startup the service applies migrations (`RUN_MIGRATIONS=true`), then listens
+on `APP_ADDR` (`:8080`) for business endpoints and `METRICS_ADDR` (`:9090`) for
+metrics and probes.
+
+**4. Smoke test.**
+
+```bash
+curl -X POST localhost:8080/accounts \
+  -H 'Content-Type: application/json' \
+  -d '{"account_id": 1, "initial_balance": "100"}'
+
+curl -X POST localhost:8080/accounts \
+  -H 'Content-Type: application/json' \
+  -d '{"account_id": 2, "initial_balance": "0"}'
+
+curl -X POST localhost:8080/transactions \
+  -H 'Content-Type: application/json' \
+  -d '{"source_account_id": 1, "destination_account_id": 2, "amount": "30"}'
+
+curl localhost:8080/accounts/1   # {"account_id":1,"balance":"70"}
+curl localhost:8080/accounts/2   # {"account_id":2,"balance":"30"}
+
+curl localhost:9090/readyz       # {"status":"ready","checks":{"postgres":"ok"}}
+```
+
+To tear down the throwaway Postgres: `docker rm -f transfers-pg`.
 
 ## Testing
 
