@@ -48,7 +48,7 @@ func (h *TransactionHandler) Transfer(ctx context.Context, c *app.RequestContext
 	}
 
 	start := time.Now()
-	_, err := h.svc.Transfer(ctx, service.TransferCmd{
+	transfer, err := h.svc.Transfer(ctx, service.TransferCmd{
 		SourceID:       req.SourceAccountID,
 		DestinationID:  req.DestinationAccountID,
 		Amount:         req.Amount,
@@ -61,5 +61,11 @@ func (h *TransactionHandler) Transfer(ctx context.Context, c *app.RequestContext
 		return
 	}
 	h.metrics.Transfers.WithLabelValues("completed").Inc()
-	c.Status(consts.StatusCreated)
+	c.JSON(consts.StatusOK, TransactionResponse{
+		TransactionID:        transfer.ID,
+		SourceAccountID:      transfer.SourceID,
+		DestinationAccountID: transfer.DestinationID,
+		Amount:               transfer.Amount,
+		Status:               transfer.Status,
+	})
 }

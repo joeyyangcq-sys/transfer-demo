@@ -34,7 +34,7 @@ Public port (`APP_ADDR`, default `:8080`):
 |--------|----------------------------|-----------------------------------|---------|
 | POST   | `/accounts`                | Create an account                 | 201     |
 | GET    | `/accounts/{account_id}`   | Get an account and its balance    | 200     |
-| POST   | `/transactions`            | Transfer between two accounts     | 201     |
+| POST   | `/transactions`            | Transfer between two accounts     | 200     |
 
 Internal admin port (`METRICS_ADDR`, default `:9090`):
 
@@ -66,11 +66,14 @@ curl -X POST localhost:8080/transactions \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000' \
   -d '{"source_account_id": 123, "destination_account_id": 456, "amount": "100.12345"}'
+# 200 OK
+# {"transaction_id":1,"source_account_id":123,"destination_account_id":456,"amount":"100.12345","status":"completed"}
 ```
 
-The `Idempotency-Key` header is optional. When supplied, retrying the same
-request returns the original result without moving money again; reusing a key
-with different parameters returns `422`.
+A successful transfer returns `200` with the recorded transaction. The
+`Idempotency-Key` header is optional. When supplied, retrying the same request
+returns the original transaction (same `transaction_id`) without moving money
+again; reusing a key with different parameters returns `422`.
 
 **Design note — why optional, not required.** A transfer is a money-moving
 operation that clients retry on timeout, so idempotency is the mechanism that

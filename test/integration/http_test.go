@@ -80,8 +80,8 @@ func TestHTTP_Transfer(t *testing.T) {
 
 	w := ut.PerformRequest(e.engine, "POST", "/transactions",
 		jsonBody(`{"source_account_id":1,"destination_account_id":2,"amount":"100.12345"}`), jsonHeader)
-	if got := w.Result().StatusCode(); got != 201 {
-		t.Fatalf("transfer status = %d, want 201", got)
+	if got := w.Result().StatusCode(); got != 200 {
+		t.Fatalf("transfer status = %d, want 200", got)
 	}
 
 	if bal := getBalance(t, e, 1); bal != "0.10999" {
@@ -124,10 +124,25 @@ func TestHTTP_TransferIdempotent(t *testing.T) {
 	key := ut.Header{Key: "Idempotency-Key", Value: "550e8400-e29b-41d4-a716-446655440000"}
 	payload := `{"source_account_id":1,"destination_account_id":2,"amount":"30"}`
 
+	var firstID int64
 	for i := 0; i < 3; i++ {
 		w := ut.PerformRequest(e.engine, "POST", "/transactions", jsonBody(payload), jsonHeader, key)
-		if got := w.Result().StatusCode(); got != 201 {
-			t.Fatalf("attempt %d status = %d, want 201", i, got)
+		if got := w.Result().StatusCode(); got != 200 {
+			t.Fatalf("attempt %d status = %d, want 200", i, got)
+		}
+		var resp struct {
+			TransactionID int64 `json:"transaction_id"`
+		}
+		if err := json.Unmarshal(w.Result().Body(), &resp); err != nil {
+			t.Fatalf("attempt %d decode: %v", i, err)
+		}
+		// Every retry returns the same transaction — the idempotent replay hands
+		// back the original record rather than creating a new one.
+		// 每次重试都返回同一笔转账——幂等重放返回原记录，而非新建一笔。
+		if i == 0 {
+			firstID = resp.TransactionID
+		} else if resp.TransactionID != firstID {
+			t.Errorf("attempt %d transaction_id = %d, want %d (same transfer)", i, resp.TransactionID, firstID)
 		}
 	}
 

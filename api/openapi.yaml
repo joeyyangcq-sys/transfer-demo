@@ -77,8 +77,15 @@ paths:
             schema:
               $ref: "#/components/schemas/TransferRequest"
       responses:
-        "201":
-          description: Transfer completed (empty body)
+        "200":
+          description: >
+            Transfer completed; returns the recorded transaction. On an
+            idempotent replay the original transaction is returned (same
+            transaction_id) without moving money again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -204,6 +211,34 @@ components:
             be > 0). Up to 20 integer digits and 18 fractional digits — magnitude
             must be < 1e20. Sent as a string to preserve precision.
           example: "100.12345"
+
+    TransactionResponse:
+      type: object
+      required: [transaction_id, source_account_id, destination_account_id, amount, status]
+      properties:
+        transaction_id:
+          type: integer
+          format: int64
+          example: 1
+        source_account_id:
+          type: integer
+          format: int64
+          example: 123
+        destination_account_id:
+          type: integer
+          format: int64
+          example: 456
+        amount:
+          type: string
+          format: decimal
+          pattern: '^[0-9]{1,20}(\.[0-9]{1,18})?$'
+          description: The transferred amount, as a decimal string.
+          example: "100.12345"
+        status:
+          type: string
+          description: Transfer status.
+          enum: [completed]
+          example: completed
 
     Error:
       type: object
