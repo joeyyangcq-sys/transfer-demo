@@ -105,8 +105,9 @@ components:
     # handler 实际返回的消息一致。
     BadRequest:
       description: >
-        Invalid input — malformed JSON, a non-positive or too-precise amount,
-        source equal to destination, or a malformed idempotency key.
+        Invalid input — malformed JSON, a non-positive account id, a
+        non-positive or too-precise amount, source equal to destination, or a
+        malformed idempotency key.
       content:
         application/json:
           schema:
@@ -114,7 +115,10 @@ components:
           example:
             error: invalid amount
     NotFound:
-      description: The referenced account does not exist.
+      description: >
+        The referenced account does not exist. The error message names the
+        missing account id, e.g. "account 42 not found" (the id is dynamic,
+        not always 123).
       content:
         application/json:
           schema:
@@ -162,6 +166,8 @@ components:
         account_id:
           type: integer
           format: int64
+          minimum: 1
+          description: Client-supplied primary key; must be a positive integer.
           example: 123
         initial_balance:
           type: string
@@ -197,10 +203,12 @@ components:
         source_account_id:
           type: integer
           format: int64
+          minimum: 1
           example: 123
         destination_account_id:
           type: integer
           format: int64
+          minimum: 1
           example: 456
         amount:
           type: string

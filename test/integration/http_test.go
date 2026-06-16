@@ -57,10 +57,19 @@ func TestHTTP_AccountErrors(t *testing.T) {
 		t.Errorf("malformed body status = %d, want 400", got)
 	}
 
-	// Unknown account -> 404. 账户不存在 -> 404。
+	// Unknown account -> 404 with the missing id named in the body.
+	// 账户不存在 -> 404，且响应体中注明缺失的账户 id。
 	w = ut.PerformRequest(e.engine, "GET", "/accounts/999", nil)
 	if got := w.Result().StatusCode(); got != 404 {
 		t.Errorf("missing account status = %d, want 404", got)
+	}
+	var notFoundBody struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(w.Result().Body(), &notFoundBody); err != nil {
+		t.Errorf("decode 404 body: %v", err)
+	} else if want := "account 999 not found"; notFoundBody.Error != want {
+		t.Errorf("404 error = %q, want %q", notFoundBody.Error, want)
 	}
 
 	// Duplicate id -> 409. 重复 id -> 409。
@@ -68,6 +77,21 @@ func TestHTTP_AccountErrors(t *testing.T) {
 	w = ut.PerformRequest(e.engine, "POST", "/accounts", jsonBody(`{"account_id":1,"initial_balance":"5"}`), jsonHeader)
 	if got := w.Result().StatusCode(); got != 409 {
 		t.Errorf("duplicate account status = %d, want 409", got)
+	}
+
+	// Missing account_id decodes to 0 -> 400, not a silently created account 0.
+	// 缺失的 account_id 解码为 0 -> 400，而不是静默创建 account 0。
+	w = ut.PerformRequest(e.engine, "POST", "/accounts", jsonBody(`{"initial_balance":"5"}`), jsonHeader)
+	if got := w.Result().StatusCode(); got != 400 {
+		t.Errorf("missing account_id status = %d, want 400", got)
+	}
+	var invalidIDBody struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(w.Result().Body(), &invalidIDBody); err != nil {
+		t.Errorf("decode 400 body: %v", err)
+	} else if want := "invalid account id"; invalidIDBody.Error != want {
+		t.Errorf("400 error = %q, want %q", invalidIDBody.Error, want)
 	}
 }
 
@@ -89,6 +113,50 @@ func TestHTTP_Transfer(t *testing.T) {
 	}
 	if bal := getBalance(t, e, 2); bal != "100.12345" {
 		t.Errorf("account 2 balance = %s, want 100.12345", bal)
+	}
+}
+
+// TestHTTP_TransferErrors checks 404 error bodies when source or destination
+// account does not exist. The message must name the missing account id.
+// TestHTTP_TransferErrors 校验 source 或 destination 账户不存在时的 404 响应体，
+// 消息中必须包含缺失的账户 id。
+func TestHTTP_TransferErrors(t *testing.T) {
+	e := setup(t)
+	mustCreate(t, e, `{"account_id":1,"initial_balance":"100"}`)
+
+	cases := []struct {
+		name    string
+		body    string
+		wantErr string
+	}{
+		{
+			name:    "source account missing",
+			body:    `{"source_account_id":999,"destination_account_id":1,"amount":"10"}`,
+			wantErr: "account 999 not found",
+		},
+		{
+			name:    "destination account missing",
+			body:    `{"source_account_id":1,"destination_account_id":888,"amount":"10"}`,
+			wantErr: "account 888 not found",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := ut.PerformRequest(e.engine, "POST", "/transactions", jsonBody(tc.body), jsonHeader)
+			if got := w.Result().StatusCode(); got != 404 {
+				t.Fatalf("status = %d, want 404", got)
+			}
+			var resp struct {
+				Error string `json:"error"`
+			}
+			if err := json.Unmarshal(w.Result().Body(), &resp); err != nil {
+				t.Fatalf("decode body: %v", err)
+			}
+			if resp.Error != tc.wantErr {
+				t.Errorf("error = %q, want %q", resp.Error, tc.wantErr)
+			}
+		})
 	}
 }
 

@@ -94,10 +94,13 @@ func TestOpenAPIConformance(t *testing.T) {
 
 	// Errors — each must match a documented response.
 	conform("malformed 400", "POST", "/accounts", `{bad`, jh)
+	conform("non-positive account id 400", "POST", "/accounts", `{"account_id":0,"initial_balance":"1"}`, jh)
 	conform("duplicate 409", "POST", "/accounts", `{"account_id":1,"initial_balance":"1"}`, jh)
 	conform("not found 404", "GET", "/accounts/999", "")
 	conform("same account 400", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":1,"amount":"1"}`, jh)
 	conform("bad idem key 400", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":2,"amount":"1"}`, jh, badKey)
+	conform("transfer src 404", "POST", "/transactions", `{"source_account_id":999,"destination_account_id":2,"amount":"1"}`, jh)
+	conform("transfer dst 404", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":888,"amount":"1"}`, jh)
 	conform("insufficient 409", "POST", "/transactions", `{"source_account_id":2,"destination_account_id":1,"amount":"9999"}`, jh)
 	conform("idem first 200", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":2,"amount":"5"}`, jh, goodKey)
 	conform("idem conflict 422", "POST", "/transactions", `{"source_account_id":1,"destination_account_id":2,"amount":"6"}`, jh, goodKey)

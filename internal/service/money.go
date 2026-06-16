@@ -15,6 +15,18 @@ const maxDecimalPlaces = 18
 // maxValue 是金额的开区间上界（NUMERIC(38,18) 整数位最多 20 位，即小于 10^20）。
 var maxValue = decimal.New(1, 20) // 10^20
 
+// validateAccountID rejects non-positive account ids. Ids are client-supplied
+// primary keys; a missing JSON field decodes to 0, so this also guards against
+// silently creating or referencing account 0.
+// validateAccountID 拒绝非正的账户 id。id 是客户端指定的主键；缺失的 JSON 字段
+// 会解码为 0，因此这同时防止静默创建或引用 account 0。
+func validateAccountID(id int64) error {
+	if id <= 0 {
+		return domain.ErrInvalidAccountID
+	}
+	return nil
+}
+
 // validateAmount checks a transfer amount: strictly positive, within range,
 // and no more than 18 decimal places.
 // validateAmount 校验转账金额：必须为正、在范围内、小数位不超过 18。
