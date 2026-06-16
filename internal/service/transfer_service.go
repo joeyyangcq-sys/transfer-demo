@@ -174,6 +174,12 @@ func (s *TransferService) resolveDuplicate(ctx context.Context, cmd TransferCmd)
 // validate checks the command before any DB work.
 // validate 在访问数据库前校验命令参数。
 func (s *TransferService) validate(cmd TransferCmd) error {
+	if err := validateAccountID(cmd.SourceID); err != nil {
+		return err
+	}
+	if err := validateAccountID(cmd.DestinationID); err != nil {
+		return err
+	}
 	if cmd.SourceID == cmd.DestinationID {
 		return domain.ErrSameAccount
 	}

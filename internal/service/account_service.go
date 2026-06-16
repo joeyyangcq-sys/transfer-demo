@@ -25,6 +25,9 @@ func NewAccountService(db repository.Querier, accounts AccountStore) *AccountSer
 // Create opens a new account with the given opening balance.
 // Create 用给定的开户余额创建一个新账户。
 func (s *AccountService) Create(ctx context.Context, id int64, initialBalance decimal.Decimal) error {
+	if err := validateAccountID(id); err != nil {
+		return err
+	}
 	if err := validateInitialBalance(initialBalance); err != nil {
 		return err
 	}

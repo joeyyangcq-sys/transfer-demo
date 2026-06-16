@@ -16,6 +16,19 @@ func TestAccountService_CreateRejectsNegativeBalance(t *testing.T) {
 	}
 }
 
+func TestAccountService_CreateRejectsNonPositiveID(t *testing.T) {
+	// A missing account_id JSON field decodes to 0; both 0 and negative ids
+	// must be rejected rather than silently creating an account.
+	// 缺失的 account_id 字段会解码为 0；0 与负数都必须被拒绝，而非静默建号。
+	for _, id := range []int64{0, -1} {
+		f := newFakeStore()
+		err := NewAccountService(nil, f).Create(context.Background(), id, dec("10"))
+		if !errors.Is(err, domain.ErrInvalidAccountID) {
+			t.Errorf("id %d: err = %v, want ErrInvalidAccountID", id, err)
+		}
+	}
+}
+
 func TestAccountService_CreateAndGet(t *testing.T) {
 	f := newFakeStore()
 	svc := NewAccountService(nil, f)

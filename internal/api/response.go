@@ -33,6 +33,8 @@ func errorMapping(err error) (status int, errType string) {
 	switch {
 	case errors.Is(err, domain.ErrInvalidAmount):
 		return consts.StatusBadRequest, "invalid_amount"
+	case errors.Is(err, domain.ErrInvalidAccountID):
+		return consts.StatusBadRequest, "invalid_account_id"
 	case errors.Is(err, domain.ErrSameAccount):
 		return consts.StatusBadRequest, "same_account"
 	case errors.Is(err, domain.ErrInvalidIdempotency):

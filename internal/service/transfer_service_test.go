@@ -86,6 +86,24 @@ func TestTransfer_SameAccount(t *testing.T) {
 	}
 }
 
+func TestTransfer_RejectsNonPositiveAccountID(t *testing.T) {
+	// A missing source/destination JSON field decodes to 0 and must be rejected
+	// before any DB work, naming it as an invalid account id.
+	// 缺失的 source/destination 字段会解码为 0，须在访问数据库前以非法账户 id 拒绝。
+	cases := []TransferCmd{
+		{SourceID: 0, DestinationID: 2, Amount: dec("10")},
+		{SourceID: 1, DestinationID: 0, Amount: dec("10")},
+		{SourceID: -1, DestinationID: 2, Amount: dec("10")},
+	}
+	for _, cmd := range cases {
+		f := newFakeStore()
+		_, err := newTransferSvc(f).Transfer(context.Background(), cmd)
+		if !errors.Is(err, domain.ErrInvalidAccountID) {
+			t.Errorf("cmd %+v: err = %v, want ErrInvalidAccountID", cmd, err)
+		}
+	}
+}
+
 func TestTransfer_InvalidAmount(t *testing.T) {
 	f := newFakeStore()
 	f.addAccount(1, "100")

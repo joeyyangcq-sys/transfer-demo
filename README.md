@@ -105,7 +105,7 @@ Errors return a JSON body `{"error": "..."}` with an appropriate status:
 
 | Status | Cases |
 |--------|-------|
-| 400 | invalid JSON, non-positive or too-precise amount, source equals destination, malformed idempotency key |
+| 400 | invalid JSON, non-positive account id, non-positive or too-precise amount, source equals destination, malformed idempotency key |
 | 404 | account not found (the message names the missing id, e.g. `account 123 not found`) |
 | 409 | account already exists, insufficient funds |
 | 422 | idempotency key reused with different parameters |
@@ -268,8 +268,9 @@ FROM ledger_entries;  -- the two totals must be equal
 
 - A single shared currency for all accounts; amounts use up to 18 decimal places.
 - No authentication or authorization (out of scope).
-- `account_id` is supplied by the client and is the primary key; re-creating an
-  existing id returns 409.
+- `account_id` is supplied by the client and is the primary key; it must be a
+  positive integer (a missing or non-positive id is rejected with 400), and
+  re-creating an existing id returns 409.
 - The `Idempotency-Key` header is optional; without it a transfer is processed
   non-idempotently. The request body matches the spec exactly — idempotency is
   carried entirely in the header. See the design note under

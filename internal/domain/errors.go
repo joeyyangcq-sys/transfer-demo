@@ -12,6 +12,7 @@ var (
 	ErrAccountAlreadyExists = errors.New("account already exists")
 	ErrInsufficientFunds    = errors.New("insufficient funds")
 	ErrInvalidAmount        = errors.New("invalid amount")
+	ErrInvalidAccountID     = errors.New("invalid account id")
 	ErrSameAccount          = errors.New("source and destination must differ")
 	ErrInvalidIdempotency   = errors.New("invalid idempotency key")
 	// ErrIdempotencyConflict: same key reused with different request params.
