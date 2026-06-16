@@ -215,7 +215,7 @@ FROM ledger_entries;  -- the two totals must be equal
 
 ## Production & AWS considerations
 
-Not implemented here (out of scope for the exercise), but worth noting:
+Not implemented here (out of scope for this service), but worth noting:
 
 - **Migrations under multiple replicas**: the migration runner takes a Postgres
   advisory lock so concurrent instances starting together are safe. In

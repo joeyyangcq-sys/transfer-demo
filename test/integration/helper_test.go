@@ -63,7 +63,7 @@ func setup(t *testing.T) *env {
 	accountSvc := service.NewAccountService(pool, accountRepo)
 	transferSvc := service.NewTransferService(pool, txm, accountRepo, transferRepo)
 
-	// Build the real public router so HTTP-level tests exercise handlers,
+	// Build the real public router so HTTP-level tests drive handlers,
 	// DTO binding, middleware and error mapping end to end. The logger writes
 	// to a buffer so tests can inspect the emitted logs.
 	// 装配真实的公开路由，让 HTTP 层测试端到端覆盖 handler、DTO 绑定、中间件与错误映射。
