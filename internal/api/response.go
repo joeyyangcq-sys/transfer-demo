@@ -52,17 +52,32 @@ func errorMapping(err error) (status int, errType string) {
 
 // Error writes an error response and records the error metric.
 // layer identifies where the error was caught (e.g. "handler", "service").
-// Error 写出错误响应并累加错误指标。
-// layer 标识错误被捕获的层（如 "handler"、"service"）。
+//
+// This is the single place an error is handled: lower layers wrap with %w and
+// return, never log, so each error is logged exactly once here (single-handling
+// rule). 5xx are logged at ERROR with full detail and correlation fields; 4xx
+// are client errors — recorded in metrics and the access log, not error-logged.
+//
+// Error 写出错误响应并累加错误指标。layer 标识错误被捕获的层。
+// 这里是错误唯一被处理的地方：下层只用 %w 包装并返回、从不打日志，
+// 因此每个错误只在此记录一次（单一处理规则）。5xx 以 ERROR 级别带完整细节
+// 和关联字段记录；4xx 属客户端错误，只进指标与访问日志，不记 error 日志。
 func (r *Responder) Error(_ context.Context, c *app.RequestContext, layer string, err error) {
 	status, errType := errorMapping(err)
 	r.metrics.Errors.WithLabelValues(errType, layer).Inc()
 
-	// Log full detail for 5xx; client sees a generic message.
-	// 5xx 记录完整细节；客户端只看到通用消息。
 	msg := err.Error()
 	if status >= consts.StatusInternalServerError {
-		r.log.Error("request failed", "type", errType, "layer", layer, "error", err)
+		// Correlation fields tie this log to the matching access-log line.
+		// 关联字段把这条日志和对应的访问日志关联起来。
+		r.log.Error("request failed",
+			"request_id", c.GetString("request_id"),
+			"method", string(c.Method()),
+			"path", string(c.Path()),
+			"type", errType,
+			"layer", layer,
+			"error", err,
+		)
 		msg = "internal server error"
 	}
 	c.JSON(status, ErrorResponse{Error: msg})

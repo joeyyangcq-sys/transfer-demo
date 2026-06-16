@@ -67,7 +67,12 @@ func Recover(m *observability.Metrics, log *slog.Logger) app.HandlerFunc {
 		defer func() {
 			if r := recover(); r != nil {
 				m.Errors.WithLabelValues("panic_recovered", "middleware").Inc()
-				log.Error("panic recovered", "request_id", c.GetString("request_id"), "panic", r)
+				log.Error("panic recovered",
+					"request_id", c.GetString("request_id"),
+					"method", string(c.Method()),
+					"path", string(c.Path()),
+					"panic", r,
+				)
 				c.AbortWithStatusJSON(consts.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 			}
 		}()
