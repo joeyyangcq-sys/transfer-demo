@@ -69,7 +69,20 @@ curl -X POST localhost:8080/transactions \
 ```
 
 The `Idempotency-Key` header is optional. When supplied, retrying the same
-request returns the original result without moving money again.
+request returns the original result without moving money again; reusing a key
+with different parameters returns `422`.
+
+**Design note — why optional, not required.** A transfer is a money-moving
+operation that clients retry on timeout, so idempotency is the mechanism that
+prevents a retry from double-charging. That protection only works if the client
+sends the *same* key on every retry. A stricter design would make the header
+**required** and reject requests without it (`400`), forcing every caller to
+take responsibility for a stable key — this is what production payment systems
+(Stripe, PayPal) effectively do. We keep it **optional** here to stay easy to
+call (curl/Postman work with no setup); the idempotency *mechanism* itself is
+fully implemented regardless (a hit returns the original transfer; a parameter
+mismatch returns `422`). For a real production deployment, the recommendation is
+to make the header required and enforce it at the API edge.
 
 ### API documentation (kept in sync)
 
@@ -256,7 +269,9 @@ FROM ledger_entries;  -- the two totals must be equal
   existing id returns 409.
 - The `Idempotency-Key` header is optional; without it a transfer is processed
   non-idempotently. The request body matches the spec exactly — idempotency is
-  carried entirely in the header.
+  carried entirely in the header. See the design note under
+  [Transfer](#transfer) for why it is optional rather than required, and what a
+  production deployment should do instead.
 - Because the system is a single Postgres instance with synchronous
   transactions, a transfer is either fully committed or fully rolled back; there
   is no need for a pending state, two-phase commit, or sagas.
