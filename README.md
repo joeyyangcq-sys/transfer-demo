@@ -71,6 +71,18 @@ curl -X POST localhost:8080/transactions \
 The `Idempotency-Key` header is optional. When supplied, retrying the same
 request returns the original result without moving money again.
 
+### API documentation (kept in sync)
+
+The full contract lives in [`api/openapi.yaml`](api/openapi.yaml) (OpenAPI 3).
+It is the source of truth, and an integration test
+(`test/integration/openapi_test.go`) drives the real router for success and
+every error case and validates each response against the spec — so if a handler
+returns a status or shape the doc does not declare, the test fails. Editing the
+API therefore forces editing the doc.
+
+Browse it via Swagger UI (started by `make docker-up`) at
+http://localhost:8081, or render locally with any OpenAPI viewer.
+
 ### Error responses
 
 Errors return a JSON body `{"error": "..."}` with an appropriate status:

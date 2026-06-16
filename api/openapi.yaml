@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: Internal Transfers API
+  version: "1.0.0"
+  description: >
+    HTTP API for internal money transfers between accounts. Amounts are exchanged
+    as decimal strings to preserve precision. This spec is the source of truth;
+    an integration test validates live responses against it (see
+    test/integration/openapi_test.go), so the doc and the API stay in sync.
+
+servers:
+  - url: http://localhost:8080
+    description: Public business endpoints
+
+paths:
+  /accounts:
+    post:
+      summary: Create an account
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
+      responses:
+        "201":
+          description: Account created (empty body)
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+
+  /accounts/{account_id}:
+    get:
+      summary: Get an account and its balance
+      operationId: getAccount
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: The account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+
+  /transactions:
+    post:
+      summary: Transfer money between two accounts
+      operationId: createTransfer
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional UUID; retrying with the same key never moves money twice.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      responses:
+        "201":
+          description: Transfer completed (empty body)
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+
+components:
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    CreateAccountRequest:
+      type: object
+      required: [account_id, initial_balance]
+      properties:
+        account_id:
+          type: integer
+          format: int64
+          example: 123
+        initial_balance:
+          type: string
+          description: Decimal string, up to 18 fractional digits.
+          example: "100.23344"
+
+    AccountResponse:
+      type: object
+      required: [account_id, balance]
+      properties:
+        account_id:
+          type: integer
+          format: int64
+          example: 123
+        balance:
+          type: string
+          example: "100.23344"
+
+    TransferRequest:
+      type: object
+      required: [source_account_id, destination_account_id, amount]
+      properties:
+        source_account_id:
+          type: integer
+          format: int64
+          example: 123
+        destination_account_id:
+          type: integer
+          format: int64
+          example: 456
+        amount:
+          type: string
+          example: "100.12345"
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: insufficient funds

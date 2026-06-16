@@ -35,6 +35,15 @@ services:
       postgres:
         condition: service_healthy
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    environment:
+      SWAGGER_JSON: /spec/openapi.yaml
+    volumes:
+      - ../api:/spec:ro
+    ports:
+      - "8081:8080"
+
   prometheus:
     image: prom/prometheus:latest
     volumes:
