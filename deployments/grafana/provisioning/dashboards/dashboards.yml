@@ -1,9 +1,0 @@
-# Load dashboards from the provisioning directory on startup.
-# 启动时从 provisioning 目录加载仪表盘。
-apiVersion: 1
-
-providers:
-  - name: internal-transfers
-    type: file
-    options:
-      path: /etc/grafana/provisioning/dashboards
