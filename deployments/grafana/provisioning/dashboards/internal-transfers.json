@@ -126,11 +126,36 @@
       "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (result) (rate(accounts_created_total[$rate_window]))", "legendFormat": "{{result}}" } ]
     },
 
-    { "id": 104, "type": "row", "title": "Runtime & Database", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 } },
+    { "id": 104, "type": "row", "title": "Database queries", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 } },
     {
-      "id": 40, "type": "timeseries", "title": "DB pool connections",
+      "id": 40, "type": "timeseries", "title": "Query latency p99 (by operation)",
+      "description": "Slowest DB operations. Spikes here indicate slow queries or lock contention.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le,operation) (rate(db_query_duration_seconds_bucket[$rate_window])))", "legendFormat": "{{operation}}" } ]
+    },
+    {
+      "id": 41, "type": "timeseries", "title": "Query rate (by operation)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+      "fieldConfig": { "defaults": { "unit": "qps", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (operation) (rate(db_query_duration_seconds_count[$rate_window]))", "legendFormat": "{{operation}}" } ]
+    },
+    {
+      "id": 42, "type": "table", "title": "Avg query time (by operation)",
+      "description": "Mean latency per operation over the rate window.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 41 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "format": "table", "instant": true, "expr": "sum by (operation) (rate(db_query_duration_seconds_sum[$rate_window])) / sum by (operation) (rate(db_query_duration_seconds_count[$rate_window]))", "legendFormat": "{{operation}}" } ]
+    },
+
+    { "id": 105, "type": "row", "title": "Runtime", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 } },
+    {
+      "id": 50, "type": "timeseries", "title": "DB pool connections",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
       "fieldConfig": { "defaults": { "unit": "none", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "db_pool_total_conns", "legendFormat": "total" },
@@ -139,16 +164,16 @@
       ]
     },
     {
-      "id": 41, "type": "timeseries", "title": "Goroutines",
+      "id": 51, "type": "timeseries", "title": "Goroutines",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 33 },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 50 },
       "fieldConfig": { "defaults": { "unit": "none", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "go_goroutines", "legendFormat": "goroutines" } ]
     },
     {
-      "id": 42, "type": "timeseries", "title": "Memory (heap in-use / RSS)",
+      "id": 52, "type": "timeseries", "title": "Memory (heap in-use / RSS)",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 33 },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 50 },
       "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "go_memstats_heap_inuse_bytes", "legendFormat": "heap in-use" },

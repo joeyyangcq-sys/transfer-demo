@@ -40,7 +40,7 @@ func setup(t *testing.T) *env {
 	}
 
 	ctx := context.Background()
-	pool, err := postgres.NewPool(ctx, dsn, 20)
+	pool, err := postgres.NewPool(ctx, dsn, 20, nil)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}

@@ -28,6 +28,10 @@ type Metrics struct {
 	DBTotalConns    prometheus.Gauge
 	DBIdleConns     prometheus.Gauge
 	DBAcquiredConns prometheus.Gauge
+
+	// Per-query latency, for spotting slow queries.
+	// 单条查询耗时，用于定位慢查询。
+	DBQueryDuration *prometheus.HistogramVec // by operation — 按操作
 }
 
 // NewMetrics registers and returns the application metrics.
@@ -77,5 +81,10 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Name: "db_pool_acquired_conns",
 			Help: "Acquired (in-use) connections in the pool.",
 		}),
+		DBQueryDuration: f.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "db_query_duration_seconds",
+			Help:    "Database query latency by operation.",
+			Buckets: []float64{.0005, .001, .0025, .005, .01, .025, .05, .1, .25, .5, 1, 2.5},
+		}, []string{"operation"}),
 	}
 }

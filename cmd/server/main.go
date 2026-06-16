@@ -33,7 +33,19 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
+	// Metrics. Built before the pool so the query tracer can report into them.
+	// 指标。在建池之前构建，以便查询 tracer 能向其上报。
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	metrics := observability.NewMetrics(reg)
+
+	// Trace every query's latency, labelled by operation.
+	// 为每条查询计时，按操作名打标签。
+	tracer := postgres.NewQueryTracer(func(op string, sec float64) {
+		metrics.DBQueryDuration.WithLabelValues(op).Observe(sec)
+	})
+
+	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL, cfg.DBMaxConns, tracer)
 	if err != nil {
 		log.Error("connect database", "error", err)
 		os.Exit(1)
@@ -47,12 +59,6 @@ func main() {
 		}
 		log.Info("migrations applied")
 	}
-
-	// Metrics.
-	// 指标。
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	metrics := observability.NewMetrics(reg)
 
 	// Sample DB pool stats in the background.
 	// 后台定时采集数据库连接池的统计指标。
